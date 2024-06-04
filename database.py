@@ -54,7 +54,6 @@ async def checking_balance(amount, user_name):
     db.close()
 
 async def get_balance(user_name):
-    print(user_name)
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
         cur.execute(

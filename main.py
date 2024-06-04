@@ -26,6 +26,7 @@ previous_states = {}
 class SendMessageStates(StatesGroup):
     WAITING_FOR_RECIPIENT_USERNAME = State()
     WAITING_FOR_MESSAGE_TEXT = State()
+    WAITING_FOR_AMOUNT = State()
 
 @dp.message_handler(commands=['start'])
 async def start_cmd(message: types.Message):
@@ -37,15 +38,10 @@ async def start_cmd(message: types.Message):
 Наш сервис предлагает доступ к трем локациям:
 • Швеция 🇸🇪
 • Финляндия 🇫🇮
-• Германия 
+• Германия 🇩🇪
 
 
 Обеспечивая быструю и защищенную передачу данных. Независимо от того, где вы находитесь, BlazerVPN гарантирует конфиденциальность и безопасность вашей онлайн активности. Обеспечьте себе свободу и защиту в интернете с BlazerVPN!""", reply_markup=start_keyboard)
-
-@dp.message_handler(commands=['help'])
-async def help_cmd(message: types.Message):
-    await message.answer("!!!!!!!!!")
-
 
 @dp.callback_query_handler()
 async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
@@ -57,7 +53,16 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             'reply_markup': callback.message.reply_markup
         })
         previous_states[callback.message.chat.id] = previous_data
-    
+
+    elif callback.data == "help_callback":
+        await callback.message.edit_text("Для связи с разработчиком бота перейдите по ссылке: \nhttps://t.me/KING_08001", reply_markup=back_keyboard)
+        previous_data = previous_states.get(callback.message.chat.id, [])
+        previous_data.append({
+            'text': callback.message.text,
+            'reply_markup': callback.message.reply_markup
+        })
+        previous_states[callback.message.chat.id] = previous_data
+        
     elif callback.data == "extension_vpn":
         await callback.message.edit_text("Недоделано", reply_markup=back_keyboard)
         previous_data = previous_states.get(callback.message.chat.id, [])
@@ -75,6 +80,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             'reply_markup': callback.message.reply_markup
         })
         previous_states[callback.message.chat.id] = previous_data
+        await callback.answer("")
 
 
     elif callback.data == "Finland_callback":
@@ -85,6 +91,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             'reply_markup': callback.message.reply_markup
         })
         previous_states[callback.message.chat.id] = previous_data
+        await callback.answer("")
 
     elif callback.data == "Germany_callback":
         await callback.message.edit_text("Вы выбрали локацию: Германия 🇩🇪\nСтоимость данного товара 100 ₽", reply_markup=pay_germany_keyboard)
@@ -94,6 +101,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             'reply_markup': callback.message.reply_markup
         })
         previous_states[callback.message.chat.id] = previous_data
+        await callback.answer("")
 
 
     elif callback.data == "Buying_sweden_VPN":
@@ -180,44 +188,6 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             })
             previous_states[callback.message.chat.id] = previous_data
 
-    elif callback.data == "replenishment":
-        user = callback.from_user
-        if not user.is_bot:
-            try:
-                payment_url, payment_id = create_payment(VPN_price, user.id)
-            except Exception as e:
-                logging.error(f"Ошибка при создании платежа: {e}")
-                await callback.message.edit_text("Произошла ошибка. Попробуйте позже.")
-                return
-
-            payment_button = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text="Оплатить", url=payment_url),
-                        InlineKeyboardButton(text="Проверить оплату", callback_data=f"checking_payment_{payment_id}")
-                    ]
-                ]
-            )
-            payment_button.add(
-                InlineKeyboardButton(text="Назад", callback_data="back")
-            )
-            await callback.message.edit_text(f"Счет на оплату сформирован.", reply_markup=payment_button)
-            await callback.answer("")
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
-        else:
-            await callback.message.edit_text("Извини, я не могу отправить сообщение боту.")
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
-
     elif "checking_payment_" in callback.data:
         payment_id = callback.data.split("_")[-1]
         try:
@@ -249,7 +219,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             previous_states[callback.message.chat.id] = previous_data
     elif callback.data == "balance":
         user_name = callback.from_user.username
-        await callback.message.edit_text(f'Ваш баланс: {await get_balance(user_name=user_name)} ₽', reply_markup=back_keyboard)
+        await callback.message.edit_text(f'Ваш баланс: {await get_balance(user_name=user_name)} ₽', reply_markup=replenishment_balance)
         previous_data = previous_states.get(callback.message.chat.id, [])
         previous_data.append({
             'text': callback.message.text,
@@ -268,6 +238,17 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         })
         previous_states[callback.message.chat.id] = previous_data
 
+    elif callback.data == "replenishment":
+            await callback.message.edit_text("Введите сумму пополнения баланса:", reply_markup=back_keyboard)
+            previous_data = previous_states.get(callback.message.chat.id, [])
+            previous_data.append({
+                'text': callback.message.text,
+                'reply_markup': callback.message.reply_markup
+            })
+            previous_states[callback.message.chat.id] = previous_data
+            await state.set_state(SendMessageStates.WAITING_FOR_AMOUNT)
+            print(previous_data)
+                    
     elif callback.data == "instruction_keyboard":
         await callback.message.answer("Инструкция для геев")
         await callback.answer("")
@@ -286,6 +267,44 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         else:
             await callback.message.edit_text("Нет предыдущего состояния. Используйте /start")
         
+
+@dp.message_handler(state=SendMessageStates.WAITING_FOR_AMOUNT)
+async def handle_amount(message: types.Message, state: FSMContext):
+    try:
+        amount = int(message.text)
+        if amount > 0:
+            try:
+                payment_url, payment_id = create_payment(amount, message.from_user.id)
+            except Exception as e:
+                logging.error(f"Ошибка при создании платежа: {e}")
+                await message.answer("Произошла ошибка. Попробуйте позже.")
+                return
+
+            payment_button = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="Оплатить", url=payment_url),
+                        InlineKeyboardButton(text="Проверить оплату", callback_data=f"checking_payment_{payment_id}")
+                    ]
+                ]
+            )
+            payment_button.add(
+                InlineKeyboardButton(text="Назад", callback_data="back")
+            )
+            await message.answer(f"Счет на оплату сформирован.", reply_markup=payment_button)
+            await state.finish()
+            # Сохраняем предыдущие данные
+            previous_data = previous_states.get(message.chat.id, [])
+            previous_data.append({
+                'text': message.text,
+                'reply_markup': message.reply_markup
+            })
+            previous_states[message.chat.id] = previous_data
+        else:
+            await message.answer("Сумма пополнения должна быть больше 0.")
+    except ValueError:
+        await message.answer("Введите корректную сумму (число).")
+
 
 @dp.message_handler(state=SendMessageStates.WAITING_FOR_MESSAGE_TEXT)
 async def send_message(message: types.Message, state: FSMContext):
