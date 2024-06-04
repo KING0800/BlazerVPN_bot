@@ -2,14 +2,14 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 start_keyboard = InlineKeyboardMarkup()
 start_keyboard.add(
-            InlineKeyboardButton(text="Купить VPN🛒", callback_data="buy_vpn"),
-            InlineKeyboardButton(text="Продлить VPN⌛️", callback_data="extension_vpn")
+            InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy_vpn"),
+            InlineKeyboardButton(text="Продлить VPN ⌛️", callback_data="extension_vpn")
 )
 start_keyboard.add(
-            InlineKeyboardButton(text="Узнать баланс💵", callback_data="balance")
+            InlineKeyboardButton(text="Узнать баланс 💵", callback_data="balance")
 )
 start_keyboard.add(
-    InlineKeyboardButton(text="Помощь🆘", callback_data="help_callback")
+    InlineKeyboardButton(text="Помощь 🆘", callback_data="help_callback")
 )
 
 
@@ -25,25 +25,31 @@ location_keyboard.add(
 
 pay_sweden_keyboard = InlineKeyboardMarkup()
 pay_sweden_keyboard.add(
-            InlineKeyboardButton(text="Купить🛒", callback_data="Buying_sweden_VPN")
-)
-
-pay_finland_keyboard = InlineKeyboardMarkup()
-pay_finland_keyboard.add(
-            InlineKeyboardButton(text="Купить🛒", callback_data="Buying_finland_VPN")
-)
-
-pay_germany_keyboard = InlineKeyboardMarkup()
-pay_germany_keyboard.add(
-            InlineKeyboardButton(text="Купить🛒", callback_data="Buying_germany_VPN")
+            InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_sweden_VPN")
 )
 pay_sweden_keyboard.add(
     InlineKeyboardButton(text="Назад", callback_data="back")
 )
 
+pay_finland_keyboard = InlineKeyboardMarkup()
+pay_finland_keyboard.add(
+            InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_finland_VPN")
+)
+pay_finland_keyboard.add(
+    InlineKeyboardButton(text="Назад", callback_data="back")
+)
+pay_germany_keyboard = InlineKeyboardMarkup()
+pay_germany_keyboard.add(
+            InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_germany_VPN")
+)
+pay_germany_keyboard.add(
+    InlineKeyboardButton(text="Назад", callback_data="back")
+)
+
+
 replenishment_balance = InlineKeyboardMarkup()
 replenishment_balance.add(
-            InlineKeyboardButton(text="Пополнить баланс💵", callback_data="replenishment")
+            InlineKeyboardButton(text="Пополнить баланс 💵", callback_data="replenishment")
 )
 replenishment_balance.add(
     InlineKeyboardButton(text="Назад", callback_data="back")
@@ -61,6 +67,6 @@ reply_keyboard.add(
 
 insturtion_keyboard = InlineKeyboardMarkup()
 insturtion_keyboard.add(
-    InlineKeyboardButton(text="Инструкция📖", callback_data="instruction_keyboard")
+    InlineKeyboardButton(text="Инструкция 📖", callback_data="instruction_keyboard")
 )
 
