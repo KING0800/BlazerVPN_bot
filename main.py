@@ -46,60 +46,42 @@ async def start_cmd(message: types.Message):
 async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
     if callback.data == "buy_vpn":
         await callback.message.edit_text("Выберите локацию:", reply_markup=location_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "help_callback":
         await callback.message.edit_text("Для связи с разработчиком бота перейдите по ссылке: \nhttps://t.me/KING_08001", reply_markup=back_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
         
     elif callback.data == "extension_vpn":
         await callback.message.edit_text("Недоделано", reply_markup=back_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "Sweden_callback":
         await callback.message.edit_text("Вы выбрали локацию: Швеция 🇸🇪\nСтоимость данного товара 100 ₽", reply_markup=pay_sweden_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
         await callback.answer("")
 
 
     elif callback.data == "Finland_callback":
         await callback.message.edit_text("Вы выбрали локацию: Финляндия 🇫🇮\nСтоимость данного товара 100 ₽", reply_markup=pay_finland_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
         await callback.answer("")
 
     elif callback.data == "Germany_callback":
         await callback.message.edit_text("Вы выбрали локацию: Германия 🇩🇪\nСтоимость данного товара 100 ₽", reply_markup=pay_germany_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
         await callback.answer("")
 
 
@@ -109,27 +91,21 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         if balance < 100:
             await callback.answer("У вас недостаточно средств")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup
         else:
             payment_key = await buy_operation(user_name)
-            await callback.message.answer("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
+            await callback.message.edit_text("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
             user_id = callback.from_user.id
 
             async with state.proxy() as data:
                 data['payment_key'] = payment_key
             await bot.send_message(Blazer_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Швеция 🇸🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             await bot.send_message(Anush_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Швеция 🇸🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            previous_data = previous_states.get(callback.message.chat.id, []) 
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "Buying_finland_VPN":
         user_name = callback.from_user.username
@@ -137,12 +113,9 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         if balance < 100:
             await callback.answer("У вас недостаточно средств")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup 
         else:
             payment_key = await buy_operation(user_name)
             await callback.message.answer("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
@@ -152,12 +125,9 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
                 data['payment_key'] = payment_key
             await bot.send_message(Blazer_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Финляндия 🇫🇮\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             await bot.send_message(Anush_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Финляндия 🇫🇮\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            previous_data = previous_states.get(callback.message.chat.id, []) 
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "Buying_germany_VPN":
         user_name = callback.from_user.username
@@ -165,12 +135,9 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         if balance < 100:
             await callback.answer("У вас недостаточно средств")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup 
         else:
             payment_key = await buy_operation(user_name)
             await callback.message.answer("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
@@ -180,12 +147,9 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
                 data['payment_key'] = payment_key
             await bot.send_message(Blazer_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Германия 🇩🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             await bot.send_message(Anush_chat, f"Пользователь {user_name}\nЗаказал VPN на локации: Германия 🇩🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            previous_data = previous_states.get(callback.message.chat.id, []) 
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup
 
     elif "checking_payment_" in callback.data:
         payment_id = callback.data.split("_")[-1]
@@ -201,52 +165,37 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             await callback.message.edit_text('Оплата прошла успешно.')
             await callback.answer("")
             pay_operation(user_name)
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = callback.message.text
+                data['previous_markup'] = callback.message.reply_markup
         else:
             await callback.message.edit_text('Оплата еще не прошла.')   
             await callback.answer("")
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
+
     elif callback.data == "balance":
         user_name = callback.from_user.username
         await callback.message.edit_text(f'Ваш баланс: {await get_balance(user_name=user_name)} ₽', reply_markup=replenishment_balance)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "reply_keyboard":
         await callback.message.answer("Введите текст сообщения:")
         await SendMessageStates.WAITING_FOR_MESSAGE_TEXT.set()
         await callback.answer("")
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
 
     elif callback.data == "replenishment":
         text = "Введите сумму пополнения баланса:"
         await callback.message.edit_text(text, reply_markup=back_keyboard)
-        previous_data = previous_states.get(callback.message.chat.id, [])
-        previous_data.append({
-            'text': callback.message.text,
-            'reply_markup': callback.message.reply_markup
-        })
-        previous_states[callback.message.chat.id] = previous_data
-
+        async with state.proxy() as data:
+            data['previous_text'] = callback.message.text
+            data['previous_markup'] = callback.message.reply_markup
         await SendMessageStates.WAITING_FOR_AMOUNT.set()
         
                     
@@ -261,13 +210,16 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         previous_states[callback.message.chat.id] = previous_data
 
     elif callback.data == "back":
-        previous_data = previous_states.get(callback.message.chat.id, set())
-        if len(previous_data) > 0:
-            previous_state = previous_data.pop()  
-            await callback.message.edit_text(previous_state['text'], reply_markup=previous_state['reply_markup'])
+        async with state.proxy() as data:
+            previous_text = data.get('previous_text')
+            previous_markup = data.get('previous_markup')
+
+        if previous_text and previous_markup:
+            await callback.message.edit_text(previous_text, reply_markup=previous_markup)
+            await state.finish()  # Или переход в другое состояние
         else:
             await callback.message.edit_text("Нет предыдущего состояния. Используйте /start")
-        
+            await state.finish()  # Или переход в другое состояние
 
 @dp.message_handler(state=SendMessageStates.WAITING_FOR_AMOUNT)
 async def handle_amount(message: types.Message, state: FSMContext):
@@ -295,12 +247,9 @@ async def handle_amount(message: types.Message, state: FSMContext):
             await message.answer(f"Счет на оплату сформирован.", reply_markup=payment_button)
             await state.finish()
             # Сохраняем предыдущие данные
-            previous_data = previous_states.get(message.chat.id, [])
-            previous_data.append({
-                'text': message.text,
-                'reply_markup': message.reply_markup
-            })
-            previous_states[message.chat.id] = previous_data
+            async with state.proxy() as data:
+                data['previous_text'] = message.text
+                data['previous_markup'] = message.reply_markup
         else:
             await message.answer("Сумма пополнения должна быть больше 0.")
     except ValueError:
@@ -343,12 +292,9 @@ async def send_message(message: types.Message, state: FSMContext):
         await message.answer(f"Пользователь не найден.", reply_markup=back_keyboard)
     await state.finish()
 
-    previous_data = previous_states.get(message.chat.id, [])
-    previous_data.append({
-        'text': message.text,
-        'reply_markup': message.reply_markup
-    })
-    previous_states[message.chat.id] = previous_data
+    async with state.proxy() as data:
+        data['previous_text'] = message.text
+        data['previous_markup'] = message.reply_markup
 
 
 if __name__ == "__main__":
