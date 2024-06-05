@@ -28,7 +28,7 @@ class SendMessageStates(StatesGroup):
     WAITING_FOR_MESSAGE_TEXT = State()
     WAITING_FOR_AMOUNT = State()
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(commands=['start'], state="*")
 async def start_cmd(message: types.Message):
     user_name = message.from_user.username
     user_id = message.from_user.id
@@ -39,7 +39,6 @@ async def start_cmd(message: types.Message):
 • Швеция 🇸🇪
 • Финляндия 🇫🇮
 • Германия 🇩🇪
-
 
 Обеспечивая быструю и защищенную передачу данных. Независимо от того, где вы находитесь, BlazerVPN гарантирует конфиденциальность и безопасность вашей онлайн активности. Обеспечьте себе свободу и защиту в интернете с BlazerVPN!""", reply_markup=start_keyboard)
 
@@ -228,7 +227,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         previous_states[callback.message.chat.id] = previous_data
 
     elif callback.data == "reply_keyboard":
-        await callback.message.answer("Введите текст сообщения:", reply_markup=back_keyboard)
+        await callback.message.answer("Введите текст сообщения:")
         await SendMessageStates.WAITING_FOR_MESSAGE_TEXT.set()
         await callback.answer("")
         previous_data = previous_states.get(callback.message.chat.id, [])
@@ -239,18 +238,20 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         previous_states[callback.message.chat.id] = previous_data
 
     elif callback.data == "replenishment":
-            await callback.message.edit_text("Введите сумму пополнения баланса:", reply_markup=back_keyboard)
-            previous_data = previous_states.get(callback.message.chat.id, [])
-            previous_data.append({
-                'text': callback.message.text,
-                'reply_markup': callback.message.reply_markup
-            })
-            previous_states[callback.message.chat.id] = previous_data
-            await state.set_state(SendMessageStates.WAITING_FOR_AMOUNT)
-            print(previous_data)
+        text = "Введите сумму пополнения баланса:"
+        await callback.message.edit_text(text, reply_markup=back_keyboard)
+        previous_data = previous_states.get(callback.message.chat.id, [])
+        previous_data.append({
+            'text': callback.message.text,
+            'reply_markup': callback.message.reply_markup
+        })
+        previous_states[callback.message.chat.id] = previous_data
+
+        await SendMessageStates.WAITING_FOR_AMOUNT.set()
+        
                     
     elif callback.data == "instruction_keyboard":
-        await callback.message.answer("Инструкция для геев")
+        await callback.message.answer("Инструкция не доделана.")
         await callback.answer("")
         previous_data = previous_states.get(callback.message.chat.id, [])
         previous_data.append({
