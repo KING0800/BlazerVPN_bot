@@ -1,9 +1,8 @@
-import asyncio
 import logging
 import sqlite3 as sq
 
 from aiogram import types, Dispatcher, Bot, executor
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -30,10 +29,9 @@ class SendMessageStates(StatesGroup):
     WAITING_FOR_AMOUNT = State()
 
 class SupportStates(StatesGroup):
-    WAITING_FOR_QUESTION = State()  # Состояние ожидания вопроса
-    WAITING_FOR_ANSWER = State()  # Состояние ожидания ответа
-    WAITING_FOR_MODERATOR_ANSWER = State()  # Состояние ожидания ответа модератора
-
+    WAITING_FOR_QUESTION = State()
+    WAITING_FOR_ANSWER = State()
+    WAITING_FOR_MODERATOR_ANSWER = State()
 
 class SupportRequest(NamedTuple):
     user_id: int
@@ -103,14 +101,14 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         user_name = callback.from_user.username
         balance = await get_balance(user_name)
         if balance < 100:
-            await callback.answer("У вас недостаточно средств")
+            await callback.answer("У вас недостаточно средств ❌")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup
         else:
             payment_key = await buy_operation(user_name)
-            await callback.message.edit_text("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
+            await callback.message.edit_text("Вы купили товар ✅! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
             user_id = callback.from_user.id
 
             async with state.proxy() as data:
@@ -125,14 +123,14 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         user_name = callback.from_user.username
         balance = await get_balance(user_name)
         if balance < 100:
-            await callback.answer("У вас недостаточно средств")
+            await callback.answer("У вас недостаточно средств ❌")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup 
         else:
             payment_key = await buy_operation(user_name)
-            await callback.message.answer("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
+            await callback.message.answer("Вы купили товар ✅! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
             user_id = callback.from_user.id
 
             async with state.proxy() as data:
@@ -147,14 +145,14 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         user_name = callback.from_user.username
         balance = await get_balance(user_name)
         if balance < 100:
-            await callback.answer("У вас недостаточно средств")
+            await callback.answer("У вас недостаточно средств ❌")
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup 
         else:
             payment_key = await buy_operation(user_name)
-            await callback.message.answer("Вы купили товар! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
+            await callback.message.answer("Вы купили товар ✅! Ожидайте подготовки товара модераторами. Ключ активации VPN будет отправлен в этом чате.")
             user_id = callback.from_user.id
 
             async with state.proxy() as data:
@@ -170,20 +168,20 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
         try:
             payment_successful = check(payment_id)
         except Exception as e:
-            logging.error(f"Ошибка при проверке платежа: {e}")
-            await callback.message.edit_text('Произошла ошибка при проверке оплаты.')
+            logging.error(f"Ошибка при проверке платежа: {e} ❌")
+            await callback.message.edit_text('Произошла ошибка при проверке оплаты. ❌')
             return
 
         if payment_successful:
             user_name = callback.message.from_user.username
-            await callback.message.edit_text('Оплата прошла успешно.')
+            await callback.message.edit_text('Оплата прошла успешно. ✅')
             await callback.answer("")
             pay_operation(user_name)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup
         else:
-            await callback.message.edit_text('Оплата еще не прошла.')   
+            await callback.message.edit_text('Оплата еще не прошла. ❌')   
             await callback.answer("")
         async with state.proxy() as data:
             data['previous_text'] = callback.message.text
@@ -235,7 +233,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             await callback.message.edit_text(previous_text, reply_markup=previous_markup)
             await state.finish()  # Или переход в другое состояние
         else:
-            await callback.message.edit_text("Нет предыдущего состояния. Используйте /start")
+            await callback.message.edit_text("Нет предыдущего состояния ❌. Используйте /start")
             await state.finish()  # Или переход в другое состояние
 
 @dp.message_handler(state=SendMessageStates.WAITING_FOR_AMOUNT)
@@ -246,8 +244,8 @@ async def handle_amount(message: types.Message, state: FSMContext):
             try:
                 payment_url, payment_id = create_payment(amount, message.from_user.id)
             except Exception as e:
-                logging.error(f"Ошибка при создании платежа: {e}")
-                await message.answer("Произошла ошибка. Попробуйте позже.")
+                logging.error(f"Ошибка при создании платежа: {e} ❌")
+                await message.answer("Произошла ошибка. Попробуйте позже. ❌")
                 return
 
             payment_button = InlineKeyboardMarkup(
@@ -258,7 +256,7 @@ async def handle_amount(message: types.Message, state: FSMContext):
                     ]
                 ]
             )
-            await message.answer(f"Счет на оплату сформирован.", reply_markup=payment_button)
+            await message.answer(f"Счет на оплату сформирован. ✅", reply_markup=payment_button)
             await state.finish()
             # Сохраняем предыдущие данные
             async with state.proxy() as data:
@@ -293,16 +291,16 @@ async def send_message(message: types.Message, state: FSMContext):
                     parse_mode="HTML"
                 )
                 await message.answer(
-                    f"Сообщение для @{user_id} отправлено: {message_text}",
+                    f"Сообщение для @{user_id} отправлено ✅: {message_text}",
                     reply_markup=back_keyboard
                 )
             else:
-                await message.answer("Не удалось отправить сообщение покупателю. Неверный ID заказа.")
+                await message.answer("Не удалось отправить сообщение покупателю. Неверный ID заказа. ❌")
         except ChatNotFound:
-            print("Не удалось отправить сообщение покупателю. Неверный ID пользователя")
-            await message.answer("Не удалось отправить сообщение покупателю. Неверный ID пользователя")
+            print("Не удалось отправить сообщение покупателю. Неверный ID пользователя ❌")
+            await message.answer("Не удалось отправить сообщение покупателю. Неверный ID пользователя ❌")
     else:
-        await message.answer(f"Пользователь не найден.", reply_markup=back_keyboard)
+        await message.answer(f"Пользователь не найден ❌", reply_markup=back_keyboard)
     await state.finish()
 
     async with state.proxy() as data:
@@ -327,7 +325,7 @@ async def report_answer(message: types.Message, state: FSMContext):
                 f"Новый запрос от @{user_name} (ID: {user_id}):\n{question}", reply_markup=report_keyboard)
     await bot.send_message(Anush_chat, 
                 f"Новый запрос от @{user_name} (ID: {user_id}):\n{question}", reply_markup=report_keyboard)
-    await message.answer(f"Ваш запрос принят. Ожидайте ответа модератора.")
+    await message.answer(f"Ваш запрос принят ✅. Ожидайте ответа модератора.")
     await state.set_state(SupportStates.WAITING_FOR_ANSWER)
 
 @dp.callback_query_handler(text_startswith="answer_", state=SupportStates.WAITING_FOR_ANSWER)
@@ -345,8 +343,8 @@ async def repling_maneger(message: types.Message, state: FSMContext):
     request = support_requests[answer_id]
     request_answer = message.text
     await bot.send_message(request.user_id, f"Ответ модератора:\n{request_answer}")
-    await bot.send_message(Blazer_chat, f"Запрос от @{request.user_name} закрыт.")
-    await bot.send_message(Anush_chat, f"Запрос от @{request.user_name} закрыт.")
+    await bot.send_message(Blazer_chat, f"Запрос от @{request.user_name} закрыт. ✅")
+    await bot.send_message(Anush_chat, f"Запрос от @{request.user_name} закрыт. ✅")
     await state.finish()
 
 

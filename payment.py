@@ -1,10 +1,10 @@
 import yookassa 
 from yookassa import Payment
 import uuid
-from tokens import Account_id, Secret_key
+from tokens import Account_payment_id, Secret_payment_key
 
-yookassa.Configuration.account_id = Account_id
-yookassa.Configuration.secret_key = Secret_key
+yookassa.Configuration.account_id = Account_payment_id
+yookassa.Configuration.secret_key = Secret_payment_key
 
 def create_payment(amount, chat_id):
     id_key = str(uuid.uuid4())

@@ -63,8 +63,7 @@ async def get_balance(user_name):
         row = cur.fetchone()
         if row is not None:
             return row[0]
-        else:
-            return "Значение не найдено." 
+        
     
 
     
