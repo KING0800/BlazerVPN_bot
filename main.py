@@ -8,6 +8,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.exceptions import ChatNotFound
+from typing import NamedTuple
 from keyboards import location_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard
 from tokens import bot_token, Blazer_chat, Anush_chat, paymaster_token, VPN_price, Account_id, Secret_key
 from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, changing_payment_key
@@ -22,11 +23,24 @@ async def on_startup(dp):
 
 dp = Dispatcher(bot, storage=MemoryStorage())
 previous_states = {}
+support_requests = []
 
 class SendMessageStates(StatesGroup):
-    WAITING_FOR_RECIPIENT_USERNAME = State()
     WAITING_FOR_MESSAGE_TEXT = State()
     WAITING_FOR_AMOUNT = State()
+
+class SupportStates(StatesGroup):
+    WAITING_FOR_QUESTION = State()  # Состояние ожидания вопроса
+    WAITING_FOR_ANSWER = State()  # Состояние ожидания ответа
+    WAITING_FOR_MODERATOR_ANSWER = State()  # Состояние ожидания ответа модератора
+
+
+class SupportRequest(NamedTuple):
+    user_id: int
+    user_name: str
+    question: str
+    answer: str = None
+
 
 @dp.message_handler(commands=['start'], state="*")
 async def start_cmd(message: types.Message):
@@ -192,13 +206,16 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
 
     elif callback.data == "replenishment":
         text = "Введите сумму пополнения баланса:"
-        await callback.message.edit_text(text, reply_markup=back_keyboard)
+        await callback.message.edit_text(text)
         async with state.proxy() as data:
             data['previous_text'] = callback.message.text
             data['previous_markup'] = callback.message.reply_markup
         await SendMessageStates.WAITING_FOR_AMOUNT.set()
         
-                    
+    elif callback.data == "help_command_callback":
+        await callback.message.answer("Введите текст своего вопроса:")
+        await state.set_state(SupportStates.WAITING_FOR_QUESTION)
+   
     elif callback.data == "instruction_keyboard":
         await callback.message.answer("Инструкция не доделана.")
         await callback.answer("")
@@ -208,7 +225,7 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
             'reply_markup': callback.message.reply_markup
         })
         previous_states[callback.message.chat.id] = previous_data
-
+    
     elif callback.data == "back":
         async with state.proxy() as data:
             previous_text = data.get('previous_text')
@@ -241,9 +258,6 @@ async def handle_amount(message: types.Message, state: FSMContext):
                     ]
                 ]
             )
-            payment_button.add(
-                InlineKeyboardButton(text="Назад", callback_data="back")
-            )
             await message.answer(f"Счет на оплату сформирован.", reply_markup=payment_button)
             await state.finish()
             # Сохраняем предыдущие данные
@@ -254,7 +268,6 @@ async def handle_amount(message: types.Message, state: FSMContext):
             await message.answer("Сумма пополнения должна быть больше 0.")
     except ValueError:
         await message.answer("Введите корректную сумму (число).")
-
 
 @dp.message_handler(state=SendMessageStates.WAITING_FOR_MESSAGE_TEXT)
 async def send_message(message: types.Message, state: FSMContext):
@@ -295,6 +308,46 @@ async def send_message(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['previous_text'] = message.text
         data['previous_markup'] = message.reply_markup
+
+@dp.message_handler(state=SupportStates.WAITING_FOR_QUESTION)
+async def report_answer(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    user_name = message.from_user.username
+    question = message.text
+    answer_id = len(support_requests) - 1
+
+    request = SupportRequest(user_id, user_name, question)
+    support_requests.append(request)
+
+    report_keyboard = InlineKeyboardMarkup()
+    report_keyboard.add(
+            InlineKeyboardButton(text="Отправить ответ", callback_data=f"answer_{answer_id}")
+    )
+    await bot.send_message(Blazer_chat, 
+                f"Новый запрос от @{user_name} (ID: {user_id}):\n{question}", reply_markup=report_keyboard)
+    await bot.send_message(Anush_chat, 
+                f"Новый запрос от @{user_name} (ID: {user_id}):\n{question}", reply_markup=report_keyboard)
+    await message.answer(f"Ваш запрос принят. Ожидайте ответа модератора.")
+    await state.set_state(SupportStates.WAITING_FOR_ANSWER)
+
+@dp.callback_query_handler(text_startswith="answer_", state=SupportStates.WAITING_FOR_ANSWER)
+async def handle_moderator_answer(callback: types.CallbackQuery, state: FSMContext):
+    answer_id = int(callback.data.split("_")[1])
+    await state.update_data(answer_id=answer_id)
+    await callback.message.answer("Введите свой ответ:")
+    await callback.answer("")
+    await state.set_state(SupportStates.WAITING_FOR_MODERATOR_ANSWER)
+
+@dp.message_handler(state=SupportStates.WAITING_FOR_MODERATOR_ANSWER)
+async def repling_maneger(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    answer_id = data.get("answer_id")
+    request = support_requests[answer_id]
+    request_answer = message.text
+    await bot.send_message(request.user_id, f"Ответ модератора:\n{request_answer}")
+    await bot.send_message(Blazer_chat, f"Запрос от @{request.user_name} закрыт.")
+    await bot.send_message(Anush_chat, f"Запрос от @{request.user_name} закрыт.")
+    await state.finish()
 
 
 if __name__ == "__main__":

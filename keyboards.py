@@ -9,7 +9,10 @@ start_keyboard.add(
             InlineKeyboardButton(text="Узнать баланс 💵", callback_data="balance")
 )
 start_keyboard.add(
-    InlineKeyboardButton(text="Помощь 🆘", callback_data="help_callback")
+    InlineKeyboardButton(text="Связь с разрабочиком 🧑‍💻", callback_data="help_callback")
+)
+start_keyboard.add(
+    InlineKeyboardButton(text="Поддержка 🆘", callback_data="help_command_callback")
 )
 
 
@@ -69,4 +72,3 @@ insturtion_keyboard = InlineKeyboardMarkup()
 insturtion_keyboard.add(
     InlineKeyboardButton(text="Инструкция 📖", callback_data="instruction_keyboard")
 )
-
