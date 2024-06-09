@@ -1,5 +1,6 @@
 import logging
 import sqlite3 as sq
+import os
 
 from aiogram import types, Dispatcher, Bot, executor
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -7,12 +8,20 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.exceptions import ChatNotFound
+from dotenv import load_dotenv, find_dotenv
 from typing import NamedTuple
 from keyboards import location_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard
-from tokens import bot_token, Blazer_chat_token, Anush_chat_token, paymaster_token, VPN_price_token, Account_id, Secret_key
 from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, changing_payment_key
 from payment import create_payment, check
 
+load_dotenv(find_dotenv())
+bot_token = os.getenv("bot_token") 
+Blazer_chat_token = os.getenv("Blazer_chat_token") 
+Anush_chat_token = os.getenv("Anush_chat_token")
+paymaster_token = os.getenv("paymaster_token") 
+VPN_price_token = os.getenv("VPN_price_token") 
+Account_payment_id_token = os.getenv("Account_payment_id_token") 
+Secret_payment_key_token = os.getenv("Secret_payment_key_token")
 
 TOKEN_API = bot_token
 bot = Bot(TOKEN_API)

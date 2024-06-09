@@ -1,7 +1,12 @@
 import yookassa 
 from yookassa import Payment
 import uuid
-from tokens import Account_payment_id_token, Secret_payment_key_token
+import os 
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
+Account_payment_id_token = os.getenv("Account_payment_id_token") 
+Secret_payment_key_token = os.getenv("Secret_payment_key_token")
 
 yookassa.Configuration.account_id = Account_payment_id_token
 yookassa.Configuration.secret_key = Secret_payment_key_token

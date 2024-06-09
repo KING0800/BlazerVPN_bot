@@ -1,6 +1,10 @@
 import sqlite3 as sq
 import uuid
-from tokens import VPN_price_token
+import os 
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
+VPN_price_token = os.getenv("VPN_price_token") 
 
 async def db_start():
     db = sq.connect('UserINFO.db')
