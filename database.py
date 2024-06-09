@@ -1,6 +1,6 @@
 import sqlite3 as sq
 import uuid
-from tokens import VPN_price
+from tokens import VPN_price_token
 
 async def db_start():
     db = sq.connect('UserINFO.db')
@@ -69,7 +69,7 @@ async def get_balance(user_name):
     
 async def buy_operation(user_name):
     balance = await get_balance(user_name)
-    if int(balance) >= float(VPN_price):
+    if int(balance) >= float(VPN_price_token):
         db = sq.connect('UserINFO.db')
         cur = db.cursor()
         cur.execute(
@@ -85,7 +85,7 @@ async def buy_operation(user_name):
 
         cur.execute(
             "UPDATE UserINFO SET balance = balance - ?, payment_key = ? WHERE user_name = ?",
-            (VPN_price, payment_key, user_name,)
+            (VPN_price_token, payment_key, user_name,)
         )
         db.commit()
         db.close()
@@ -100,7 +100,7 @@ async def pay_operation(user_name):
     cur = db.cursor()
     cur.execute(
         "UPDATE UserINFO SET balance = balance + ? WHERE user_name = ?",
-        (VPN_price, user_name,)
+        (VPN_price_token, user_name,)
     )
     db.commit()
     db.close()
