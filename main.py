@@ -122,8 +122,8 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
 
             async with state.proxy() as data:
                 data['payment_key'] = payment_key
-            await bot.send_message(Blazer_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Швеция 🇸🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            await bot.send_message(Anush_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Швеция 🇸🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Швеция 🇸🇪\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Швеция 🇸🇪\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup
@@ -144,8 +144,8 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
 
             async with state.proxy() as data:
                 data['payment_key'] = payment_key
-            await bot.send_message(Blazer_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Финляндия 🇫🇮\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            await bot.send_message(Anush_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Финляндия 🇫🇮\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Финляндия 🇫🇮\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Финляндия 🇫🇮\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup
@@ -166,8 +166,8 @@ async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
 
             async with state.proxy() as data:
                 data['payment_key'] = payment_key
-            await bot.send_message(Blazer_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Германия 🇩🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-            await bot.send_message(Anush_chat_token, f"Пользователь {user_name}\nЗаказал VPN на локации: Германия 🇩🇪\nID пользователя: {user_id}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Германия 🇩🇪\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
+            await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: Германия 🇩🇪\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
             async with state.proxy() as data:
                 data['previous_text'] = callback.message.text
                 data['previous_markup'] = callback.message.reply_markup
