@@ -1,6 +1,7 @@
 import sqlite3 as sq
 import uuid
 import os 
+from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -15,7 +16,10 @@ async def db_start():
         "user_id INTEGER PRIMARY KEY, " 
         "user_name TEXT, "
         "balance INTEGER DEFAULT 0,"
-        "payment_key TEXT UNIQUE"
+        "payment_key TEXT UNIQUE,"
+        "vpn_active BOOLEAN DEFAULT FALSE,"
+        "vpn_location TEXT,"
+        "vpn_expiration_date DATETIME"
         ")"
     )
     db.commit()
@@ -67,9 +71,6 @@ async def get_balance(user_name):
         row = cur.fetchone()
         if row is not None:
             return row[0]
-        
-    
-
     
 async def buy_operation(user_name):
     balance = await get_balance(user_name)
@@ -97,14 +98,13 @@ async def buy_operation(user_name):
     else:
         raise ValueError("Insufficient funds")
     
-
-async def pay_operation(user_name):
+async def pay_operation(price, user_name):
     balance = await get_balance(user_name)
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
     cur.execute(
         "UPDATE UserINFO SET balance = balance + ? WHERE user_name = ?",
-        (VPN_price_token, user_name,)
+        (price, user_name,)
     )
     db.commit()
     db.close()
@@ -120,5 +120,28 @@ async def changing_payment_key(payment_key):
     db.close()
     return row
 
+async def update_vpn_state(user_id, active, expiration_date):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "UPDATE UserINFO SET vpn_active = ?, vpn_expiration_date = ? WHERE user_id = ?",
+            (active, expiration_date, user_id)
+        )
+        db.commit()
 
-    
+async def get_vpn_state(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "SELECT vpn_active, vpn_expiration_date FROM UserINFO WHERE user_id = ?",
+            (user_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            active, expiration_date = row
+            if expiration_date:
+                days_remaining = (int(expiration_date) - int((datetime.now()).day))
+                return active, days_remaining
+            else:
+                return active, None 
+        return None, None 

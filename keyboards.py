@@ -72,3 +72,19 @@ insturtion_keyboard = InlineKeyboardMarkup()
 insturtion_keyboard.add(
     InlineKeyboardButton(text="Инструкция 📖", callback_data="instruction_keyboard")
 )
+
+buy_keyboard = InlineKeyboardMarkup()
+buy_keyboard.add(
+    InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy_vpn")
+)
+buy_keyboard.add(
+    InlineKeyboardButton(text="Назад", callback_data="back")
+)
+
+extend_keyboard = InlineKeyboardMarkup()
+extend_keyboard.add(
+    InlineKeyboardButton(text="Продлить VPN 💵", callback_data="extend_callback")
+)
+extend_keyboard.add(
+    InlineKeyboardButton(text="Назад", callback_data="back")
+)
