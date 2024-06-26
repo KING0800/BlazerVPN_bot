@@ -19,12 +19,22 @@ async def db_start():
         "payment_key TEXT UNIQUE,"
         "vpn_active BOOLEAN DEFAULT FALSE,"
         "vpn_location TEXT,"
-        "vpn_expiration_date DATETIME"
+        "vpn_expiration_date DATETIME, "
+        "referrer_id INTEGER"
+        ")"
+    )
+
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS TempData("
+        "user_id TEXT, "
+        "message_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "message_text TEXT, "
+        "message_markup TEXT "
         ")"
     )
     db.commit()
 
-async def edit_profile(user_name, user_id):
+async def edit_profile(user_name, user_id, referrer_id=None):
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
     cur.execute(
@@ -33,10 +43,16 @@ async def edit_profile(user_name, user_id):
     )
     row = cur.fetchone()
     if row is None:
-        cur.execute(
-            "INSERT INTO UserINFO(user_id, user_name) VALUES (?, ?)",
-            (user_id, user_name)
-        )
+        if referrer_id != None:
+            cur.execute(
+                "INSERT INTO UserINFO(user_id, user_name, referrer_id) VALUES (?, ?, ?)",
+                (user_id, user_name, referrer_id, )
+            )
+        else:
+            cur.execute(
+                "INSERT INTO UserINFO(user_id, user_name) VALUES (?, ?)",
+                (user_id, user_name,)
+                )
     db.commit()
     db.close()
 
@@ -98,13 +114,13 @@ async def buy_operation(user_name):
     else:
         raise ValueError("Insufficient funds")
     
-async def pay_operation(price, user_name):
-    balance = await get_balance(user_name)
+async def pay_operation(price, user_id):
+    balance = await get_balance(user_id)
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
     cur.execute(
-        "UPDATE UserINFO SET balance = balance + ? WHERE user_name = ?",
-        (price, user_name,)
+        "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
+        (price, user_id,)
     )
     db.commit()
     db.close()
@@ -145,3 +161,81 @@ async def get_vpn_state(user_id):
             else:
                 return active, None 
         return None, None 
+    
+async def save_temp_message(user_id, message_text, message_markup):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT COUNT() FROM TempData WHERE user_id = ?", (user_id,))
+        count = cur.fetchone()[0]
+        
+        if count >= 5: 
+            cur.execute(
+                "DELETE FROM TempData WHERE user_id = ? AND message_id = (SELECT MIN(message_id) FROM TempData WHERE user_id = ?)", 
+                (user_id, user_id)
+            ) 
+        cur.execute(
+            "INSERT INTO TempData (user_id, message_text, message_markup) VALUES (?, ?, ?)",
+            (user_id, message_text, message_markup)
+        )
+        db.commit()
+
+
+async def get_temp_message(user_id, message_id=None):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        if message_id:
+            cur.execute(
+                "SELECT message_text, message_markup FROM TempData WHERE user_id = ? AND message_id = ?",
+                (user_id, message_id)
+            )
+        else:
+            cur.execute(
+                "SELECT message_text, message_markup FROM TempData WHERE user_id = ?",
+                (user_id,)
+            )
+        row = cur.fetchone()
+        if row:
+            return row[0], row[1]
+        return None, None
+
+async def delete_temp_message(user_id, message_id=None):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        if message_id:
+            cur.execute(
+                "DELETE FROM TempData WHERE user_id = ? AND message_id = ?",
+                (user_id, message_id)
+            )
+        else:
+            cur.execute(
+                "DELETE FROM TempData WHERE user_id = ?",
+                (user_id,)
+            )
+        db.commit()
+
+async def find_message_id(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "SELECT MAX(message_id) FROM TempData WHERE user_id = ?", 
+            (user_id,)
+        )
+        message_id = cur.fetchone()[0]
+        db.commit()
+        return message_id
+        
+
+async def find_user(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        result = cur.execute(
+            "SELECT * FROM UserINFO WHERE user_id = ?",
+            (user_id,)
+        ).fetchall()
+        return bool(len(result))
+        db.commit()
+
+async def count_refs(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        return cur.execute("SELECT COUNT('id') as count FROM UserINFO WHERE 'referrer_id' = ?", (user_id,)).fetchone()[0]

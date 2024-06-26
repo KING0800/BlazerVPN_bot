@@ -14,7 +14,9 @@ start_keyboard.add(
 start_keyboard.add(
     InlineKeyboardButton(text="Поддержка 🆘", callback_data="help_command_callback")
 )
-
+start_keyboard.add(
+    InlineKeyboardButton(text="Реферальная система 🤝", callback_data="ref_system_callback")
+)
 
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
