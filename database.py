@@ -1,7 +1,7 @@
 import sqlite3 as sq
 import uuid
 import os 
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -20,7 +20,8 @@ async def db_start():
         "vpn_active BOOLEAN DEFAULT FALSE,"
         "vpn_location TEXT,"
         "vpn_expiration_date DATETIME, "
-        "referrer_id INTEGER"
+        "referrer_id INTEGER, "
+        "used_promocodes TEXT"
         ")"
     )
 
@@ -114,12 +115,22 @@ async def buy_operation(user_name):
     else:
         raise ValueError("Insufficient funds")
     
+
 async def pay_operation(price, user_id):
-    balance = await get_balance(user_id)
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
     cur.execute(
         "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
+        (price, user_id,)
+    )
+    db.commit()
+    db.close()
+
+async def delete_sum_operation(price, user_id):
+    db = sq.connect('UserINFO.db')
+    cur = db.cursor()
+    cur.execute(
+        "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
         (price, user_id,)
     )
     db.commit()
@@ -136,14 +147,18 @@ async def changing_payment_key(payment_key):
     db.close()
     return row
 
-async def update_vpn_state(user_id, active, expiration_date):
+async def update_vpn_state(user_id, location, active, expiration_days):
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
+        now = datetime.now()
+        expiration_date = now + timedelta(days=expiration_days)
+        expiration_date_str = expiration_date.strftime("%Y-%m-%d %H:%M:%S")
         cur.execute(
-            "UPDATE UserINFO SET vpn_active = ?, vpn_expiration_date = ? WHERE user_id = ?",
-            (active, expiration_date, user_id)
+            "UPDATE UserINFO SET vpn_active = ?, vpn_location = ?, vpn_expiration_date = ? WHERE user_id = ?",
+            (active, location, expiration_date_str, user_id)
         )
         db.commit()
+
 
 async def get_vpn_state(user_id):
     with sq.connect('UserINFO.db') as db:
@@ -235,7 +250,54 @@ async def find_user(user_id):
         return bool(len(result))
         db.commit()
 
-async def count_refs(user_id):
+async def get_referrer_username(user_id):
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
-        return cur.execute("SELECT COUNT('id') as count FROM UserINFO WHERE 'referrer_id' = ?", (user_id,)).fetchone()[0]
+        cur.execute("SELECT user_name FROM UserINFO WHERE referrer_id = ?", (user_id,))
+        result = cur.fetchone()
+        if result:
+            return result[0]
+        else:
+            return None
+        
+async def check_promocode_used(user_id, promocode):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT used_promocodes FROM UserINFO WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()
+        if result:
+            used_promocodes = result[0]
+            if used_promocodes is not None and promocode in used_promocodes.split(','):
+                return True
+        return False
+
+async def save_promocode(user_id, promocode):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("UPDATE UserINFO SET used_promocodes = ? WHERE user_id = ?", (f"{promocode},", user_id))
+        db.commit()
+
+async def find_own_vpn(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT vpn_expiration_date, vpn_location, vpn_active FROM UserINFO WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()
+
+        if result:
+            try:
+                if result[0]:
+                    expiration_date = datetime.strptime(str(result[0]), "%Y-%m-%d %H:%M:%S") 
+                else:
+                    expiration_date = None  # Или задайте другое значение по умолчанию
+            except ValueError:
+                expiration_date = None  # Или другая обработка некорректной даты
+
+            # Создаем словарь с информацией о VPN
+            vpn_info = {
+                'vpn_expiration_date': expiration_date,
+                'vpn_location': result[1],
+                'vpn_active': bool(result[2])  # Преобразуем в булево значение
+            }
+            return vpn_info
+        else:
+            return None 

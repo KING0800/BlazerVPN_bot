@@ -14,8 +14,8 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.exceptions import ChatNotFound
 from dotenv import load_dotenv, find_dotenv
 from typing import NamedTuple
-from keyboards import location_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard, buy_keyboard, extend_keyboard
-from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, checking_balance, get_vpn_state, update_vpn_state, get_temp_message, delete_temp_message, save_temp_message, find_message_id, find_user, count_refs
+from keyboards import location_keyboard, reply_buy_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard, buy_keyboard, extend_keyboard
+from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, checking_balance, get_vpn_state, update_vpn_state, get_temp_message, delete_temp_message, save_temp_message, find_message_id, find_user, get_referrer_username, save_promocode, check_promocode_used, find_own_vpn, delete_sum_operation
 from payment import create_payment, check
 
 load_dotenv(find_dotenv())
@@ -26,6 +26,7 @@ paymaster_token = os.getenv("paymaster_token")
 VPN_price_token = os.getenv("VPN_price_token") 
 Account_payment_id_token = os.getenv("Account_payment_id_token") 
 Secret_payment_key_token = os.getenv("Secret_payment_key_token")
+Promocode = os.getenv("Promocode")
 
 TOKEN_API = bot_token
 bot = Bot(TOKEN_API)
@@ -48,11 +49,21 @@ class SupportStates(StatesGroup):
     WAITING_FOR_QUESTION = State()
     WAITING_FOR_MODERATOR_ANSWER = State()
 
+class PromocodeStates(StatesGroup):
+    WAITING_FOR_USER_PROMOCODE = State()
+
+class AdmCommandState(StatesGroup):
+    WAITING_FOR_SUM_MONEY = State()
+    WAITING_FOR_DELETE_SUM_MONEY = State()
+
+    
+
 class SupportRequest(NamedTuple):
     user_id: int
     user_name: str
     question: str
     answer: str = None
+
 
 previous_markup = None
 
@@ -154,7 +165,7 @@ async def handle_text(message: types.Message):
         await PaymentStates.WAITING_FOR_AMOUNT.set()
 
     elif message.text == "/support":
-        await message.answer("Задайте вопрос:", reply_markup=back_keyboard)
+        await message.answer("Здравствуйте. Чем можем быть полезны?", reply_markup=back_keyboard)
         if message.reply_markup:
             await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
         else:
@@ -163,13 +174,30 @@ async def handle_text(message: types.Message):
 
     elif message.text == "/ref_system":
         user_id = message.from_user.id
-        await message.answer(f"Ваша реферальная ссылка: <pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\nПоделитесь этой ссылкой со своими знакомыми, чтобы получить 15 ₽ себе на баланс.\n\nКоличество рефералов: {await count_refs(user_id)}", reply_markup=back_keyboard, parse_mode="HTML")
+        referrals = await get_referrer_username(user_id)
+        text = f"Ваша реферальная ссылка: <pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\nПоделитесь этой ссылкой со своими знакомыми, чтобы получить 15 ₽ себе на баланс.\n\n"
+        if referrals:
+            text += "Ваши рефералы:\n"
+            for username in referrals:
+                text += f"@{username}\n"
+        else:
+            text += "У вас еще нет рефералов."
+        await message.answer(text, reply_markup=back_keyboard, parse_mode="HTML")
         if message.reply_markup:
             await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
         else:
             await save_temp_message(message.from_user.id, message.text, None)
+    ##### ADM COMMANDS
+    elif message.text == "/add":
+        await message.answer("введите сумму для пополнения: ")
+        await AdmCommandState.WAITING_FOR_SUM_MONEY.set()
+    elif message.text == "/delete":
+        await message.answer("введите сумму для удаления: ")
+        await AdmCommandState.WAITING_FOR_DELETE_SUM_MONEY.set()
+
     else:
         await message.answer("Неверная команда. Пожалуйста, используйте одну из доступных команд (/help)", reply_markup=start_keyboard)   
+    
         
 # обработчик кнопки balance(balance)
 @dp.callback_query_handler(lambda c: c.data == "balance")
@@ -196,9 +224,10 @@ async def buying_VPN_handle(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(lambda c: c.data == "Sweden_callback" or c.data == "Finland_callback" or c.data == "Germany_callback")
 async def location_choose_def(callback: types.CallbackQuery, state: FSMContext):
     if callback.data == "Sweden_callback":
-        await callback.message.edit_text(f"Вы выбрали локацию: Швеция 🇸🇪\nСтоимость данного товара {VPN_price_token} ₽", reply_markup=pay_sweden_keyboard)
-        await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
-        await callback.answer("")
+        await callback.message.edit_text(f"Вы выбрали локацию: Швеция 🇸🇪\nVPN на данной локации сейчас нету в наличии ❌", reply_markup=back_keyboard)
+        #await callback.message.edit_text(f"Вы выбрали локацию: Швеция 🇸🇪\nСтоимость данного товара {VPN_price_token} ₽", reply_markup=pay_sweden_keyboard)
+        #await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+        #await callback.answer("")
 
     elif callback.data == "Finland_callback":
         await callback.message.edit_text(f"Вы выбрали локацию: Финляндия 🇫🇮\nСтоимость данного товара {VPN_price_token} ₽", reply_markup=pay_finland_keyboard)
@@ -206,9 +235,10 @@ async def location_choose_def(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("")
 
     elif callback.data == "Germany_callback":
-        await callback.message.edit_text(f"Вы выбрали локацию: Германия 🇩🇪\nСтоимость данного товара {VPN_price_token} ₽", reply_markup=pay_germany_keyboard)
-        await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
-        await callback.answer("")
+        await callback.message.edit_text(f"Вы выбрали локацию: Германия 🇩🇪\nVPN на данной локации сейчас нету в наличии ❌", reply_markup=back_keyboard)
+        #await callback.message.edit_text(f"Вы выбрали локацию: Германия 🇩🇪\nСтоимость данного товара {VPN_price_token} ₽", reply_markup=pay_germany_keyboard)
+        #await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+        #await callback.answer("")
 
 # функция, которая обрабатывает покупку VPN.
 async def buying_VPN_def(callback, country,  state):
@@ -225,22 +255,23 @@ async def buying_VPN_def(callback, country,  state):
         user_id = callback.from_user.id
         async with state.proxy() as data:
             data['payment_key'] = payment_key
-        await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-        await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_keyboard)
-        await update_vpn_state(user_id=user_id, location=country, active=True, expiration_date=30)
+        await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard)
+        await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard)
         await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+        await BuyVPNStates.WAITING_FOR_MESSAGE_TEXT.set()
 
 # хендлер, который вызывает функцию, для обработки покупки VPN. Обрабатывает кнопки (Buying_sweden_VPN, Buying_finland_VPN, Buying_germany_VPN)
 @dp.callback_query_handler(lambda c: c.data == "Buying_sweden_VPN" or c.data == "Buying_finland_VPN" or c.data == "Buying_germany_VPN")
 async def buying_VPN_handle(callback: types.CallbackQuery, state: FSMContext):
     if callback.data == "Buying_sweden_VPN":
         await buying_VPN_def(callback, "Швеция 🇸🇪", state)
-
+        await state.update_data(country="Швеция 🇸🇪") 
     elif callback.data == "Buying_finland_VPN":
-        await buying_VPN_def(callback, "Финляндия 🇫🇮", state) 
-
+        await buying_VPN_def(callback, "Финляндия 🇫🇮", state)
+        await state.update_data(country="Финляндия 🇫🇮")
     elif callback.data == "Buying_germany_VPN":
         await buying_VPN_def(callback, "Германия 🇩🇪", state)
+        await state.update_data(country="Германия 🇩🇪")
 
 # обработка кнопки ответа пользователю после покупки (payment_callback)
 @dp.callback_query_handler(lambda c: c.data == "payment_callback")
@@ -251,11 +282,17 @@ async def payment_handle(callback: types.CallbackQuery):
     await callback.answer("")
 
 # обработка ответа пользователю от модератора.
+@dp.callback_query_handler(lambda c: c.data == "reply_buy_keyboard", state=BuyVPNStates.WAITING_FOR_MESSAGE_TEXT)
+async def send_message(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("Введите код активации VPN для пользователя: ")
+    await BuyVPNStates.WAITING_FOR_MESSAGE_TEXT.set()
+
 @dp.message_handler(state=BuyVPNStates.WAITING_FOR_MESSAGE_TEXT)
-async def send_message(message: types.Message, state: FSMContext):
+async def send_message_handle(message: types.Message, state):
     message_text = message.text
     async with state.proxy() as data:
         payment_key = str(data.get('payment_key'))
+        country = data.get('country')
     if payment_key:
         try:
             db = sq.connect('UserINFO.db')
@@ -269,7 +306,11 @@ async def send_message(message: types.Message, state: FSMContext):
             if row:
                 user_id = row[0]
                 await bot.send_message(user_id, text=f"Спасибо за покупку\nВаш код активации: <pre>{message.text}</pre>\nСледуйте инструкции для активации VPN", reply_markup=insturtion_keyboard, parse_mode="HTML")
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                await update_vpn_state(user_id=user_id, location=country, active=True, expiration_days=30)
+                if message.reply_markup:
+                    await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                else:
+                    await save_temp_message(message.from_user.id, message.text, None)
                 await message.answer(f"Сообщение для @{user_id} отправлено ✅: {message_text}", reply_markup=start_keyboard)
             else:
                 await message.answer("Не удалось отправить сообщение покупателю. Неверный ID заказа. ❌")
@@ -281,7 +322,7 @@ async def send_message(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-"""***************************************************** ПРОДЛЕНИЕ VPN *************************************************************************"""
+"""****************************************************************** ПРОДЛЕНИЕ VPN *************************************************************************"""
 # хендлер для обработки кнопок для продления VPN(extension_vpn, extend_callback)
 @dp.callback_query_handler(lambda c: c.data == "extension_vpn" or c.data == "extend_callback")
 async def example_name_def(callback: types.CallbackQuery, state: FSMContext):
@@ -315,6 +356,7 @@ async def example_name_def(callback: types.CallbackQuery, state: FSMContext):
             await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
             await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
+
             
 """************************************************** ПОПОЛНЕНИЕ БАЛАНСА *************************************************"""
 # обработка кнопки для оплаты(replenishment)
@@ -329,6 +371,7 @@ async def replenishment_handle(callback: types.CallbackQuery):
 @dp.message_handler(state=PaymentStates.WAITING_FOR_AMOUNT)
 async def handle_amount(message: types.Message, state: FSMContext):
     try:
+        global amount
         amount = int(message.text)
         if amount > 0:
             try:
@@ -357,15 +400,17 @@ async def handle_amount(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(lambda c: "checking_payment" in c.data)
 async def succesfull_payment(callback: types.CallbackQuery):
     payment_id = check(callback.data.split('_')[-1])
+    user_id = callback.from_user.id
     if payment_id:
-        await callback.message.answer('Оплата прошла успешно. ')
+        await callback.message.answer('Оплата прошла успешно. \nЧтобы узнать свой баланс /balance')
+        await pay_operation(amount, user_id)
     else:
         await callback.message.answer('Оплата еще не прошла. ')
     await callback.answer('')
 
 """****************************************************** СИСТЕМА ПОДДЕРЖКИ *******************************************************"""
-# обработка кнопка поддержки (help_command_callback)
-@dp.callback_query_handler(lambda c: c.data == "help_command_callback")
+# обработка кнопка поддержки (support_callback)
+@dp.callback_query_handler(lambda c: c.data == "support_callback")
 async def support_handle(callback: types.CallbackQuery):
     await callback.message.edit_text("Задайте вопрос:", reply_markup=back_keyboard)
     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
@@ -374,7 +419,7 @@ async def support_handle(callback: types.CallbackQuery):
 
 # обработка отправления сообщения от пользователя модераторам
 @dp.message_handler(state=SupportStates.WAITING_FOR_QUESTION)
-async def process_question(message: types.Message, state: FSMContext):
+async def process_question(message: types.Message,  state: FSMContext):
     user_id = message.from_user.id
     user_name = message.from_user.username
     question = message.text
@@ -389,10 +434,9 @@ async def process_question(message: types.Message, state: FSMContext):
         await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
     else:
         await save_temp_message(message.from_user.id, message.text, None)
-    await SupportStates.WAITING_FOR_MODERATOR_ANSWER.set()
 
 # обработка кнопки, для пересылания ответа модератора пользователю (reply_keyboard)
-@dp.callback_query_handler(lambda c: c.data == "reply_keyboard", state=SupportStates.WAITING_FOR_MODERATOR_ANSWER)
+@dp.callback_query_handler(lambda c: c.data == "reply_keyboard")
 async def process_answer(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Напишите свой ответ:", reply_markup=back_keyboard)
     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
@@ -428,11 +472,67 @@ async def replying_for_moder(message: types.Message, state):
 
 @dp.callback_query_handler(lambda c: c.data == "ref_system_callback")
 async def ref_system(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    await callback.message.edit_text(f"Ваша реферальная ссылка: <pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\nПоделитесь этой ссылкой со своими знакомыми, чтобы получить 15 ₽ себе на баланс.\n\nКоличество рефералов: {await count_refs(user_id)}", reply_markup=back_keyboard, parse_mode="HTML")
-    await callback.answer()
-    await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+    user_id = callback.message.from_user.id
+    referrals = await get_referrer_username(user_id)
+    text = f"Ваша реферальная ссылка: <pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\nПоделитесь этой ссылкой со своими знакомыми, чтобы получить 15 ₽ себе на баланс.\n\n"
+    if referrals:
+        text += "Ваши рефералы:\n"
+        for username in referrals:
+            text += f"@{username}\n"
+    else:
+        text += "У вас еще нет рефералов."
+    await callback.message.answer(text, reply_markup=back_keyboard, parse_mode="HTML")
+    if callback.message.reply_markup:
+        await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+    else:
+        await save_temp_message(callback.from_user.id, callback.message.text, None)
 
+    
+"""********************************************************** СИСТЕМА ПРОМОКОДОВ **************************************************************"""
+
+@dp.callback_query_handler(lambda c: c.data == "promo_callback")
+async def promo_handle(callback: types.CallbackQuery, state):
+    await callback.message.edit_text("Введите действующий промокод:")
+    if callback.message.reply_markup:
+        await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+    else:
+        await save_temp_message(callback.from_user.id, callback.message.text, None)
+    await PromocodeStates.WAITING_FOR_USER_PROMOCODE.set()
+
+@dp.message_handler(state=PromocodeStates.WAITING_FOR_USER_PROMOCODE)
+async def handle_user_promo(message: types.Message, state):
+    user_promo = message.text
+    user_id = message.from_user.id
+    check_used_promo = await check_promocode_used(user_id, Promocode)
+    if str(user_promo) == str(Promocode) and check_used_promo == False:
+        await message.answer("Вы ввели правильный промокод ✅ На ваш баланс зачислено 20 рублей!", reply_markup=back_keyboard)
+        await pay_operation(20, user_id)
+        await (user_id, user_promo)
+        if message.reply_markup:
+            await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+        else:
+            await save_temp_message(message.from_user.id, message.text, None)
+    elif str(user_promo) == str(Promocode) and check_used_promo == True:
+        await message.answer("Вы уже использовали данный промокод ❌\n\nСледите за новостями в нашем сообществе в вк: https://vk.com/blazervpn", reply_markup=back_keyboard)    
+    else:
+        await message.answer("Вы ввели неправильный промокод, либо он неактуален ❌\n\nСледите за новостями в нашем сообществе в вк: https://vk.com/blazervpn", reply_markup=back_keyboard)
+        if message.reply_markup:
+            await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+        else:
+            await save_temp_message(message.from_user.id, message.text, None)
+    await state.finish()
+
+"""*********************************************** ОБРАБОТКА ИНФОРМАЦИИ О VPN ПОЛЬЗОВАТЕЛЕЙ ******************************************"""
+
+@dp.callback_query_handler(lambda c: c.data == "myvpn_callback")
+async def myvpn_handle(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    vpn_info = await find_own_vpn(user_id)
+    if vpn_info['vpn_active'] != False:
+        await callback.message.edit_text(f"Ваш VPN 🛡️:\n\nЛокация: {vpn_info["vpn_location"]}\nДата окончания: {vpn_info["vpn_expiration_date"]}", reply_markup=back_keyboard)
+    else:
+        await callback.message.edit_text(f"Вы не имеете действующего VPN ❌")
+    
 
 """********************************************** СИСТЕМА ВОЗВРАЩЕНИЯ К ПРЕДЫДУЩИМ СООБЩЕНИЯМ ****************************************"""
 
@@ -451,6 +551,26 @@ async def back_handle(callback: types.CallbackQuery, state):
 
     await callback.answer("")
     await state.finish()
+
+
+"""************************************************************* ВРЕМЕННЫЕ АДМИН КОМАНДЫ ******************************************************"""
+
+@dp.message_handler(state=AdmCommandState.WAITING_FOR_SUM_MONEY)
+async def user_add_sum_handle(message: types.Message, state):
+    user_sum = message.text
+    user_id = message.from_user.id
+    await pay_operation(int(user_sum), user_id)
+    await message.answer(f"вы пополнили баланс на {user_sum}")
+    await state.finish()
+
+@dp.message_handler(state=AdmCommandState.WAITING_FOR_DELETE_SUM_MONEY)
+async def user_add_sum_handle(message: types.Message, state):
+    user_sum = message.text
+    user_id = message.from_user.id
+    await delete_sum_operation(int(user_sum), user_id)
+    await message.answer(f"вы удалили баланс на {user_sum}")
+    await state.finish()
+
 
 
 if __name__ == '__main__':

@@ -6,23 +6,25 @@ start_keyboard.add(
             InlineKeyboardButton(text="Продлить VPN ⌛️", callback_data="extension_vpn")
 )
 start_keyboard.add(
+    InlineKeyboardButton(text="Мои VPN🛡️", callback_data="myvpn_callback")
+)
+start_keyboard.add(
             InlineKeyboardButton(text="Узнать баланс 💵", callback_data="balance")
 )
 start_keyboard.add(
-    InlineKeyboardButton(text="Связь с разрабочиком 🧑‍💻", callback_data="help_callback")
+    InlineKeyboardButton(text="Связь с разрабочиком 🧑‍💻", callback_data="help_callback"),
+    InlineKeyboardButton(text="Поддержка 🆘", callback_data="support_callback")
 )
 start_keyboard.add(
-    InlineKeyboardButton(text="Поддержка 🆘", callback_data="help_command_callback")
-)
-start_keyboard.add(
-    InlineKeyboardButton(text="Реферальная система 🤝", callback_data="ref_system_callback")
+    InlineKeyboardButton(text="Реферальная система 🤝", callback_data="ref_system_callback"),
+    InlineKeyboardButton(text="Промокоды🎟", callback_data="promo_callback")
 )
 
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
-            InlineKeyboardButton(text="Швеция 🇸🇪", callback_data="Sweden_callback"),
-            InlineKeyboardButton(text="Финляндия 🇫🇮", callback_data="Finland_callback"),
-            InlineKeyboardButton(text="Германия 🇩🇪", callback_data="Germany_callback"),
+            #InlineKeyboardButton(text="Швеция 🇸🇪", callback_data="Sweden_callback"),
+            InlineKeyboardButton(text="Финляндия 🇫🇮", callback_data="Finland_callback")
+            #InlineKeyboardButton(text="Германия 🇩🇪", callback_data="Germany_callback"),
 )
 location_keyboard.add(
     InlineKeyboardButton(text="Назад", callback_data="back")
@@ -64,6 +66,12 @@ back_keyboard = InlineKeyboardMarkup()
 back_keyboard.add(
     InlineKeyboardButton(text="Назад", callback_data="back")
 )
+
+reply_buy_keyboard = InlineKeyboardMarkup()
+reply_buy_keyboard.add(
+    InlineKeyboardButton(text="Ответить", callback_data="reply_buy_keyboard")
+)
+
 
 reply_keyboard = InlineKeyboardMarkup()
 reply_keyboard.add(
