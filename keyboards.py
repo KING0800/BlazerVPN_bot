@@ -27,7 +27,7 @@ location_keyboard.add(
             #InlineKeyboardButton(text="Германия 🇩🇪", callback_data="Germany_callback"),
 )
 location_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 pay_sweden_keyboard = InlineKeyboardMarkup()
@@ -35,7 +35,7 @@ pay_sweden_keyboard.add(
             InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_sweden_VPN")
 )
 pay_sweden_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 pay_finland_keyboard = InlineKeyboardMarkup()
@@ -43,14 +43,14 @@ pay_finland_keyboard.add(
             InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_finland_VPN")
 )
 pay_finland_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 pay_germany_keyboard = InlineKeyboardMarkup()
 pay_germany_keyboard.add(
             InlineKeyboardButton(text="Купить 🛒", callback_data="Buying_germany_VPN")
 )
 pay_germany_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 
@@ -59,23 +59,23 @@ replenishment_balance.add(
             InlineKeyboardButton(text="Пополнить баланс 💵", callback_data="replenishment")
 )
 replenishment_balance.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 back_keyboard = InlineKeyboardMarkup()
 back_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 reply_buy_keyboard = InlineKeyboardMarkup()
 reply_buy_keyboard.add(
-    InlineKeyboardButton(text="Ответить", callback_data="reply_buy_keyboard")
+    InlineKeyboardButton(text="Ответить ↩️", callback_data="reply_buy_keyboard")
 )
 
 
 reply_keyboard = InlineKeyboardMarkup()
 reply_keyboard.add(
-    InlineKeyboardButton(text="Ответить", callback_data="reply_keyboard")
+    InlineKeyboardButton(text="Ответить ↩️", callback_data="reply_keyboard")
 )
 
 insturtion_keyboard = InlineKeyboardMarkup()
@@ -88,7 +88,7 @@ buy_keyboard.add(
     InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy_vpn")
 )
 buy_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 
 extend_keyboard = InlineKeyboardMarkup()
@@ -96,5 +96,12 @@ extend_keyboard.add(
     InlineKeyboardButton(text="Продлить VPN 💵", callback_data="extend_callback")
 )
 extend_keyboard.add(
-    InlineKeyboardButton(text="Назад", callback_data="back")
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
+)
+own_vpn_keyboard = InlineKeyboardMarkup()
+own_vpn_keyboard.add(
+    InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy_vpn")
+)
+own_vpn_keyboard.add(
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
