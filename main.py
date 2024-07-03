@@ -13,12 +13,11 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.exceptions import ChatNotFound
 from dotenv import load_dotenv, find_dotenv
 from typing import NamedTuple
-from keyboards import own_vpn_keyboard, location_keyboard, reply_buy_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard, buy_keyboard, extend_keyboard
-from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, checking_balance, get_vpn_state, update_vpn_state, get_temp_message, delete_temp_message, save_temp_message, find_message_id, find_user, get_referrer_username, save_promocode, check_promocode_used, find_own_vpn, delete_sum_operation
+from keyboards import own_vpn_keyboard, numbers_for_replenishment, location_keyboard, reply_buy_keyboard, pay_sweden_keyboard, replenishment_balance, start_keyboard, back_keyboard, reply_keyboard, insturtion_keyboard, pay_finland_keyboard, pay_germany_keyboard, buy_keyboard, extend_keyboard
+from database import db_start, edit_profile, get_balance, buy_operation, pay_operation, get_vpn_state, get_vpn_data, update_vpn_state, get_temp_message, delete_temp_message, save_temp_message, find_message_id, find_user, get_referrer_username, save_promocode, check_promocode_used, delete_sum_operation
 from payment import create_payment, check
 
-dotenv_path = os.path.join(os.path.dirname(__file__), 'tokens', '.env') 
-load_dotenv(dotenv_path)
+load_dotenv(find_dotenv())
 bot_token = os.getenv("bot_token") 
 Blazer_chat_token = os.getenv("Blazer_chat_token") 
 Anush_chat_token = os.getenv("Anush_chat_token")
@@ -61,7 +60,6 @@ class SupportRequest(NamedTuple):
     user_name: str
     question: str
     answer: str = None
-
 
 previous_markup = None
 
@@ -125,6 +123,7 @@ async def handle_text(message: types.Message, state):
                            "/extension_vpn - Продлить VPN\n"
                            "/replenishment - Пополнить баланс\n"
                            "/support - Задать вопрос\n"
+                           "/my_vpn - Мои VPN\n"
                            "/ref_system - Реферальная система\n"
                            "/promocode - Промокоды\n"
                            "/instruction - Инструкция по использованию VPN", reply_markup=start_keyboard, parse_mode="HTML")
@@ -132,10 +131,10 @@ async def handle_text(message: types.Message, state):
     elif message.text == "/balance":
         user_name = message.from_user.username
         balance = await get_balance(user_name)
-        await message.answer(f"Ваш баланс: {balance} ₽", reply_markup=start_keyboard)
+        await message.answer(f"Ваш баланс: {balance} ₽", reply_markup=replenishment_balance)
 
     elif message.text == "/connect_with_dev":
-        await message.answer("Для связи с разработчиком бота перейдите по ссылке: \nhttps://t.me/KING_08001", reply_markup=back_keyboard)
+        await message.answer("Для связи с разработчиком бота перейдите по ссылке: \n\nhttps://t.me/KING_08001", reply_markup=back_keyboard)
 
     elif message.text == "/buy_vpn":
         await message.answer("Выберите локацию:", reply_markup=location_keyboard)
@@ -157,7 +156,7 @@ async def handle_text(message: types.Message, state):
                 await save_temp_message(message.from_user.id, message.text, None)
 
     elif message.text == "/replenishment":
-        await message.answer("Введите сумму пополнения (₽) :", reply_markup=back_keyboard)
+        await message.edit_text("Выберите сумму пополнения, либо введите нужную самостоятельно: ", reply_markup=numbers_for_replenishment)
         if message.reply_markup:
             await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
         else:
@@ -203,7 +202,25 @@ async def handle_text(message: types.Message, state):
 2. Для добавления туннеля WireGuard нажмите на кнопку «плюс» в нижнем углу экрана и выберите опцию. Здесь можно загрузить конфигурацию из скачанного файла конфигурации (которую мы прикрепили к этой ниже) или ввести данные вручную.""")
         await message.answer_photo(photo="https://i.imgur.com/MvB2M5t.png", caption="""
 3. Нажмите на переключатель рядом с появившимся именем туннеля. Система Android попросит выдать WireGuard разрешения для работы в качестве VPN. Дайте разрешение. После этого соединение будет установлено, в статус-баре будет отображаться знак в виде ключа""")
-
+    
+    elif message.text == "/my_vpn":
+        user_id = message.from_user.id
+        vpn_data = await get_vpn_data(user_id)
+        if vpn_data:
+            vpn_info_text = "Ваши VPN 🛡:\n\n"
+            for vpn in vpn_data:
+                location = vpn[1]
+                active = vpn[2]
+                expiration_date = datetime.datetime.strptime(vpn[3], "%Y-%m-%d %H:%M:%S")
+                days_remaining = (expiration_date - datetime.datetime.now()).days
+                vpn_info_text += f"Локация: {location}\nДата окончания: {expiration_date.strftime('%Y-%m-%d %H:%M:%S')}\nОсталось: {days_remaining} дней\n\n"
+            await message.answer(vpn_info_text, reply_markup=back_keyboard)
+        else:
+            await message.answer(f"Вы не имеете действующего VPN ❌", reply_markup=own_vpn_keyboard)
+        if message.reply_markup:
+            await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+        else:
+            await save_temp_message(message.from_user.id, message.text, None)
     ##### ADM COMMANDS
     elif message.text == "/add":
         await message.answer("введите сумму для пополнения: ")
@@ -227,7 +244,7 @@ async def balance_def(callback: types.CallbackQuery):
 # обработчик кнопки help(help_callback)
 @dp.callback_query_handler(lambda c: c.data == "help_callback")
 async def help_kb_handle(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("Для связи с разработчиком бота перейдите по ссылке: \nhttps://t.me/KING_08001", reply_markup=back_keyboard)
+    await callback.message.edit_text("Для связи с разработчиком бота перейдите по ссылке: \n\nhttps://t.me/KING_08001", reply_markup=back_keyboard)
     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
 """*********************************************** ВЫБОР ЛОКАЦИИ И ПОКУПКА ВПН ************************************************************************"""
@@ -272,7 +289,6 @@ async def buying_VPN_def(callback, country,  state):
         user_id = callback.from_user.id
         async with state.proxy() as data:
             data['payment_key'] = payment_key
-        #await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard)
         await bot.send_message(Blazer_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard)
         await bot.send_message(Anush_chat_token, f"Пользователь @{user_name} (ID: {user_id})\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard)
         await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
@@ -363,7 +379,6 @@ async def instruction_handle(callback: types.CallbackQuery):
     await callback.message.answer_photo(photo="https://i.imgur.com/MvB2M5t.png", caption="""
 3. Нажмите на переключатель рядом с появившимся именем туннеля. Система Android попросит выдать WireGuard разрешения для работы в качестве VPN. Дайте разрешение. После этого соединение будет установлено, в статус-баре будет отображаться знак в виде ключа""")
 
-
 """****************************************************************** ПРОДЛЕНИЕ VPN *************************************************************************"""
 # хендлер для обработки кнопок для продления VPN(extension_vpn, extend_callback)
 @dp.callback_query_handler(lambda c: c.data == "extension_vpn" or c.data == "extend_callback")
@@ -375,28 +390,29 @@ async def example_name_def(callback: types.CallbackQuery, state: FSMContext):
             await callback.message.edit_text("У вас нету действующего VPN ❌! Вам его необходимо приобрести ", reply_markup=buy_keyboard)
             await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
         else:
-            await callback.message.edit_text(f"Продление VPN на месяц стоит {VPN_price_token} ₽\nНажмите на кнопку, если готовы вхах VPN", reply_markup=extend_keyboard)
+            await callback.message.edit_text(f"Продление VPN на месяц стоит {VPN_price_token} ₽\nНажмите на кнопку, если готовы продлить VPN", reply_markup=extend_keyboard)
             await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
     elif callback.data == "extend_callback":
-        user_name = callback.from_user.username
-        user_id = callback.from_user.id
-        balance = await get_balance(user_name)
-        if float(balance) >= float(VPN_price_token):
-            await pay_operation(user_id)
-            active, days_remaining = await get_vpn_state(user_id)
-            if days_remaining is not None:
-                expiration_date = datetime.datetime.now() + datetime.timedelta(days=30) 
-                await update_vpn_state(user_id, True, expiration_date)
-                await callback.message.edit_text(f"VPN продлен на 1 месяц ✅ До окончания действия VPN осталось {days_remaining + 30} дней")
-                await save_temp_message(callback.from_user.id, callback.message.text, None)
-            else:
-                await callback.message.edit_text("VPN уже был продлен на максимальный срок.")
-                await save_temp_message(callback.from_user.id, callback.message.text, None)
-        else:
-            await callback.answer("У вас недостаточно средств ❌")
-            await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
-            await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+        await callback.message.edit_text("В доработке.")
+        # user_name = callback.from_user.username
+        # user_id = callback.from_user.id
+        # balance = await get_balance(user_name)
+        # if float(balance) >= float(VPN_price_token):
+        #     await pay_operation(user_id)
+        #     active, days_remaining = await get_vpn_state(user_id)
+        #     if days_remaining is not None:
+        #         expiration_date = datetime.datetime.now() + datetime.timedelta(days=30) 
+        #         await update_vpn_state(user_id, True, expiration_date)
+        #         await callback.message.edit_text(f"VPN продлен на 1 месяц ✅ До окончания действия VPN осталось {days_remaining + 30} дней")
+        #         await save_temp_message(callback.from_user.id, callback.message.text, None)
+        #     else:
+        #         await callback.message.edit_text("VPN уже был продлен на максимальный срок.")
+        #         await save_temp_message(callback.from_user.id, callback.message.text, None)
+        # else:
+        #     await callback.answer("У вас недостаточно средств ❌")
+        #     await callback.message.edit_text("Чтобы пополнить свой баланс, нажмите на кнопку.", reply_markup=replenishment_balance)
+        #     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
 
             
@@ -404,10 +420,34 @@ async def example_name_def(callback: types.CallbackQuery, state: FSMContext):
 # обработка кнопки для оплаты(replenishment)
 @dp.callback_query_handler(lambda c: c.data == "replenishment")
 async def replenishment_handle(callback: types.CallbackQuery):
-    await callback.message.edit_text("Введите сумму пополнения (₽) :", reply_markup=back_keyboard)
+    await callback.message.edit_text("Выберите сумму пополнения, либо введите нужную самостоятельно: ", reply_markup=numbers_for_replenishment)
     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
     await PaymentStates.WAITING_FOR_AMOUNT.set()
     await callback.answer("")
+
+@dp.callback_query_handler(lambda c: c.data == "200_for_replenishment_callback" or c.data == "500_for_replenishment_callback" or c.data == "1000_for_replenishment_callback", state=PaymentStates.WAITING_FOR_AMOUNT)
+async def rubls_200_for_replenishment(callback: types.CallbackQuery, state):
+    try:
+        if callback.data == "200_for_replenishment_callback":
+            payment_url, payment_id = create_payment(200, callback.from_user.id)
+        elif callback.data == "500_for_replenishment_callback":
+            payment_url, payment_id = create_payment(500, callback.from_user.id)
+        elif callback.data == "1000_for_replenishment_callback":
+            payment_url, payment_id = create_payment(1000, callback.from_user.id)
+    except Exception as e:
+        await callback.message.answer("Произошла ошибка. Попробуйте позже. ❌")
+        return
+
+    payment_button = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Оплатить", url=payment_url),
+                InlineKeyboardButton(text="Проверить оплату", callback_data=f"checking_payment_{payment_id}")
+            ]
+        ]
+    )
+    await callback.message.edit_text("Счет на оплату сформирован. ✅", reply_markup=payment_button)
+    await state.finish()           
 
 # обработка пополнения баланса
 @dp.message_handler(state=PaymentStates.WAITING_FOR_AMOUNT)
@@ -430,7 +470,8 @@ async def handle_amount(message: types.Message, state: FSMContext):
                     ]
                 ]
             )
-            await message.answer("Счет на оплату сформирован. ✅", reply_markup=payment_button)           
+            await message.answer("Счет на оплату сформирован. ✅", reply_markup=payment_button) 
+            await state.finish()           
         else:
             await message.answer("Сумма пополнения должна быть больше 0.")
     except ValueError:
@@ -458,7 +499,7 @@ async def succesfull_payment(callback: types.CallbackQuery):
 # обработка кнопка поддержки (support_callback)
 @dp.callback_query_handler(lambda c: c.data == "support_callback")
 async def support_handle(callback: types.CallbackQuery):
-    await callback.message.edit_text("Задайте вопрос:", reply_markup=back_keyboard)
+    await callback.message.edit_text("Здравствуйте. Чем можем быть полезны?", reply_markup=back_keyboard)
     await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
     await SupportStates.WAITING_FOR_QUESTION.set()
     await callback.answer("")
@@ -529,8 +570,10 @@ async def replying_for_moder(message: types.Message, state):
 async def ref_system(callback: types.CallbackQuery):
     user_id = callback.message.from_user.id
     referrals = await get_referrer_username(user_id)
-    referrals = referrals.split("\n")
-
+    if referrals != None:
+        referrals = referrals.split("\n")
+    else:
+        referrals = referrals
     text = f"Ваша реферальная ссылка: <pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\nПоделитесь этой ссылкой со своими знакомыми, чтобы получить 5 ₽ себе на баланс.\n\n"
     if referrals:
         text += "Ваши рефералы:\n"
@@ -585,11 +628,22 @@ async def handle_user_promo(message: types.Message, state):
 @dp.callback_query_handler(lambda c: c.data == "myvpn_callback")
 async def myvpn_handle(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    vpn_info = await find_own_vpn(user_id)
-    if vpn_info['vpn_active'] != False:
-        await callback.message.edit_text(f"Ваш VPN 🛡️:\n\nЛокация: {vpn_info["vpn_location"]}\nДата окончания: {vpn_info["vpn_expiration_date"]}", reply_markup=back_keyboard)
+    vpn_data = await get_vpn_data(user_id)
+    if vpn_data:
+        vpn_info_text = "Ваши VPN 🛡:\n\n"
+        for vpn in vpn_data:
+            location = vpn[1]
+            active = vpn[2]
+            expiration_date = datetime.datetime.strptime(vpn[3], "%Y-%m-%d %H:%M:%S")
+            days_remaining = (expiration_date - datetime.datetime.now()).days
+            vpn_info_text += f"Локация: {location}\nДата окончания: {expiration_date.strftime('%Y-%m-%d %H:%M:%S')}\nОсталось: {days_remaining} дней\n\n"
+        await callback.message.edit_text(vpn_info_text, reply_markup=back_keyboard)
     else:
         await callback.message.edit_text(f"Вы не имеете действующего VPN ❌", reply_markup=own_vpn_keyboard)
+    if callback.message.reply_markup:
+        await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
+    else:
+        await save_temp_message(callback.from_user.id, callback.message.text, None)
     
 
 """********************************************** СИСТЕМА ВОЗВРАЩЕНИЯ К ПРЕДЫДУЩИМ СООБЩЕНИЯМ ****************************************"""
