@@ -11,7 +11,7 @@ Secret_payment_key_token = os.getenv("Secret_payment_key_token")
 yookassa.Configuration.account_id = Account_payment_id_token
 yookassa.Configuration.secret_key = Secret_payment_key_token
 
-def create_payment(amount, chat_id):
+def create_payment(amount, chat_id, payment_type):
     id_key = str(uuid.uuid4())
     payment = Payment.create({
             "amount": {
@@ -19,7 +19,7 @@ def create_payment(amount, chat_id):
                 "currency": "RUB" 
             },
         'payment_method_data': { 
-            'type': 'sbp'
+            'type': f'{payment_type}'
         },
         'confirmation': {
             'type': 'redirect',
@@ -29,7 +29,7 @@ def create_payment(amount, chat_id):
         'metadata': {
             'chat_id': chat_id
         },
-        'description': 'Описание товара...'
+        'description': 'Blazer VPN'
     }, id_key)
 
     return payment.confirmation.confirmation_url, payment.id

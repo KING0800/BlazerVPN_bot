@@ -99,3 +99,31 @@ numbers_for_replenishment.add(
 numbers_for_replenishment.add(
     InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
+async def addind_count_for_extend(count):
+    numbers_for_extend = InlineKeyboardMarkup()
+    numbers_for_extend.row() 
+    for i in range(1, count + 1):
+        numbers_for_extend.insert(InlineKeyboardButton(text=f"{i}.", callback_data=f"extend_vpn_{i}"))
+    numbers_for_extend.add(
+        InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
+    )
+    return numbers_for_extend
+
+payment_type = InlineKeyboardMarkup()
+payment_type.add(
+    InlineKeyboardButton(text="Банковской картой 💳", callback_data="bank_card_payment_callback"),
+    InlineKeyboardButton(text="Кошелек ЮMoney", callback_data="yoomoney_payment_callback")
+)
+payment_type.add(
+    InlineKeyboardButton(text="TinkoffPay", callback_data="TinkoffPay_callback"),
+    InlineKeyboardButton(text="SberPay", callback_data="SberPay_callback")
+)
+payment_type.add(
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
+)
+
+promocode_keyboard = InlineKeyboardMarkup()
+promocode_keyboard.add(
+    InlineKeyboardButton(text="Сообщество VK", url="https://vk.com/blazervpn"),
+    InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
+)

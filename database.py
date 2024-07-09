@@ -14,10 +14,11 @@ async def db_start():
 
     cur.execute(
         "CREATE TABLE IF NOT EXISTS UserINFO("
-        "user_id INTEGER PRIMARY KEY, " 
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "user_id INTEGER, " 
         "user_name TEXT, "
         "balance INTEGER DEFAULT 0,"
-        "payment_key TEXT UNIQUE,"
+        "time_of_registration TEXT,"
         "referrer_id INTEGER, "
         "used_promocodes TEXT"
         ")"
@@ -28,13 +29,16 @@ async def db_start():
         "user_id INTEGER, "
         "message_id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "message_text TEXT, "
-        "message_markup TEXT "
+        "message_markup TEXT, "
+        "payment_key TEXT UNIQUE"
         ")"
     )
 
     cur.execute(
         "CREATE TABLE IF NOT EXISTS vpn_data("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "user_id INTEGER, "
+        "user_name TEXT, "
         "location TEXT, "
         "active BOOLEAN, "
         "expiration_date DATETIME "
@@ -45,26 +49,26 @@ async def db_start():
 """****************************************************** РЕДАКТИРОВАНИЕ UserINFO *********************************************"""
 # добавление основных данных о пользователе 
 async def edit_profile(user_name, user_id, referrer_id=None):
-    db = sq.connect('UserINFO.db')
-    cur = db.cursor()
-    cur.execute(
-        "SELECT * FROM UserINFO WHERE user_id = ?",
-        (user_id,)
-    )
-    row = cur.fetchone()
-    if row is None:
-        if referrer_id != None:
-            cur.execute(
-                "INSERT INTO UserINFO(user_id, user_name, referrer_id) VALUES (?, ?, ?)",
-                (user_id, user_name, referrer_id, )
-            )
-        else:
-            cur.execute(
-                "INSERT INTO UserINFO(user_id, user_name) VALUES (?, ?)",
-                (user_id, user_name,)
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "SELECT * FROM UserINFO WHERE user_id = ?",
+            (user_id,)
+        )
+        row = cur.fetchone()
+        if row is None:
+            registration_time = datetime.now().strftime("%Y.%m.%d %H:%M:%S")  # Получаем время в нужном формате
+            if referrer_id is not None:
+                cur.execute(
+                    "INSERT INTO UserINFO(user_id, user_name, time_of_registration, referrer_id) VALUES (?, ?, ?, ?)",
+                    (user_id, user_name, registration_time, referrer_id)
                 )
-    db.commit()
-    db.close()
+            else:
+                cur.execute(
+                    "INSERT INTO UserINFO(user_id, user_name, time_of_registration) VALUES (?, ?, ?)",
+                    (user_id, user_name, registration_time)
+                )
+        db.commit()
 
 # получение данных о балансе пользователя
 async def get_balance(user_name):
@@ -79,25 +83,19 @@ async def get_balance(user_name):
             return row[0]
     
 # операция по покупке (снятие денег)
-async def buy_operation(user_name):
-    balance = await get_balance(user_name)
+async def buy_operation(user_id, user_name):
+    balance = await get_balance(user_name=user_name)
     if int(balance) >= float(VPN_price_token):
         db = sq.connect('UserINFO.db')
         cur = db.cursor()
+        payment_key = str(uuid.uuid4())
         cur.execute(
-            "SELECT payment_key FROM UserINFO WHERE user_name = ?",
-            (user_name,)
+            "INSERT INTO TempData (user_id, payment_key) VALUES (?, ?)",
+            (user_id, payment_key)
         )
-        existing_order_id = cur.fetchone()
-
-        if existing_order_id:
-            payment_key = str(uuid.uuid4())
-        else:
-            payment_key = str(uuid.uuid4())
-
         cur.execute(
-            "UPDATE UserINFO SET balance = balance - ?, payment_key = ? WHERE user_name = ?",
-            (VPN_price_token, payment_key, user_name,)
+            "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
+            (VPN_price_token, user_name,)
         )
         db.commit()
         db.close()
@@ -170,16 +168,28 @@ async def save_promocode(user_id, promocode):
 
 """*************************************************** РЕДАКТИРОВАНИЕ vpn_data *********************************************"""
 # обновление данных о vpn
-async def update_vpn_state(user_id, location, active, expiration_days):
+async def update_vpn_state(user_id, user_name, location, active, expiration_days):
     with sq.connect('UserINFO.db') as db:
         check_expired_vpns()
         cur = db.cursor()
         now = datetime.now()
-        expiration_date = now + timedelta(days=expiration_days)
-        expiration_date_str = expiration_date.strftime("%Y-%m-%d %H:%M:%S")
+        expiration_date = now + timedelta(days=int(expiration_days)) 
+        expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
         cur.execute(
-            "INSERT INTO vpn_data (user_id, location, active, expiration_date) VALUES (?, ?, ?, ?)",
-            (user_id, location, active, expiration_date_str)
+            "INSERT INTO vpn_data (user_id, user_name, location, active, expiration_date) VALUES (?, ?, ?, ?, ?)",
+            (user_id, user_name, location, active, expiration_date_str)
+        )
+        db.commit()
+
+# обновление данных после продления VPN
+async def extend_vpn_state(user_id, location, active, expiration_date, id):
+    with sq.connect('UserINFO.db') as db:
+        check_expired_vpns()
+        cur = db.cursor()
+        expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
+        cur.execute(
+            "UPDATE vpn_data SET active=?, expiration_date=?, location=? WHERE user_id=? AND id=?",
+            (active, expiration_date_str, location, user_id, id)
         )
         db.commit()
 
@@ -188,13 +198,13 @@ def check_expired_vpns():
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
         current_time = datetime.now()  # Получаем текущее время в Python
-        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")  # Преобразуем в строку с форматом 
+        current_time_str = current_time.strftime("%Y.%m.%d %H:%M:%S")  # Преобразуем в строку с форматом 
         cur.execute(f"SELECT * FROM vpn_data WHERE expiration_date < '{current_time_str}'")  # Используем строку в запросе
         vpn_data = cur.fetchall()
         for vpn in vpn_data:
             user_id = vpn[0]
             expiration_date_str = vpn[3]
-            expiration_date = datetime.strptime(expiration_date_str, "%Y-%m-%d %H:%M:%S")
+            expiration_date = datetime.strptime(expiration_date_str, "%Y.%m.%d %H:%M:%S")
             cur.execute("DELETE FROM vpn_data WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
             db.commit()
             print(f"VPN для пользователя {user_id} с датой окончания {expiration_date} удален.")
@@ -210,22 +220,6 @@ async def get_vpn_data(user_id):
             return None
         else:
             return vpn_data
-
-async def get_vpn_state(user_id):
-    check_expired_vpns() 
-    vpn_data = await get_vpn_data(user_id)
-    if vpn_data:
-        vpn_data.sort(key=lambda item: item[3], reverse=True)
-        latest_vpn = vpn_data[0]
-        active = latest_vpn[2]
-        expiration_date = datetime.strptime(latest_vpn[3], "%Y-%m-%d %H:%M:%S")
-        expiration_date_timestamp = int(expiration_date.timestamp())
-        now_timestamp = int(datetime.now().timestamp())
-
-        days_remaining = (expiration_date_timestamp - now_timestamp) // (24 * 60 * 60)
-        return active, days_remaining
-    else:
-        return None, None  # VPN не найден
     
 """************************************************** РЕДАКТИРОВАНИЕ TempData *********************************************************"""
 # сохранение сообщений и inline кнопок, для последующего использования кнопки "Назад"
