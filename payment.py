@@ -5,38 +5,64 @@ import os
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
-Account_payment_id_token = os.getenv("Account_payment_id_token") 
-Secret_payment_key_token = os.getenv("Secret_payment_key_token")
+ACCOUNT_PAYMENT_ID_TOKEN = os.getenv("ACCOUNT_PAYMENT_ID_TOKEN") 
+SECRET_PAYMENT_KEY_TOKEN = os.getenv("SECRET_PAYMENT_KEY_TOKEN")
 
-yookassa.Configuration.account_id = Account_payment_id_token
-yookassa.Configuration.secret_key = Secret_payment_key_token
+yookassa.Configuration.account_id = ACCOUNT_PAYMENT_ID_TOKEN
+yookassa.Configuration.secret_key = SECRET_PAYMENT_KEY_TOKEN
 
-def create_payment(amount, chat_id, payment_type):
+def create_payment(amount, chat_id, payment_type, user_email):
     id_key = str(uuid.uuid4())
     payment = Payment.create({
-            "amount": {
-                "value": amount,
-                "currency": "RUB" 
-            },
-        'payment_method_data': { 
-            'type': f'{payment_type}'
+    "amount": {
+        "value": amount,
+        "currency": "RUB" 
+    },
+    'payment_method_data': { 
+        'type': f'{payment_type}'
+    },
+    'confirmation': {
+        'type': 'redirect',
+        'return_url': 'https://t.me/blazervpnbot'
+    },
+    'capture': True,
+    'metadata': {
+        'chat_id': chat_id
+    },
+    'description': 'Blazer VPN',
+    'receipt': {
+        'customer': {
+            "email": user_email 
         },
-        'confirmation': {
-            'type': 'redirect',
-            'return_url': 'https://t.me/blazervpnbot'
-        },
-        'capture': True,
-        'metadata': {
-            'chat_id': chat_id
-        },
-        'description': 'Blazer VPN'
-    }, id_key)
-
+        'items': [
+            {
+                "description": "BLAZER - HOSTING SERVICES",
+                "quantity": "1",
+                "amount": {
+                    "value": amount,
+                    "currency": 'RUB'
+                },
+                "vat_code": "1"
+            }
+        ]
+    }
+}, id_key)
     return payment.confirmation.confirmation_url, payment.id
 
+
 def check(payment_id):
-    payment = yookassa.Payment.find_one(payment_id)
-    if payment.status == 'succeeded':
-        return payment.metadata
-    else:
+    try:
+        payment = yookassa.Payment.find_one(payment_id)
+        if payment.status == 'succeeded':
+            if payment.receipt_registration == 'succeeded':
+                pass
+            else:
+                pass
+            return payment.metadata
+        elif payment.status in ['pending', 'canceled', 'waiting_for_capture', 'failed']:
+            return False
+        else:
+            return False
+    except Exception as e:
         return False
+

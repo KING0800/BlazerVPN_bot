@@ -5,13 +5,13 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
-VPN_price_token = os.getenv("VPN_price_token") 
+VPN_PRICE_TOKEN = os.getenv("VPN_price_token") 
 
-# создание всех БД для работы(1.UserINFO(общие данные о пользователях), 2.TempData(временные данные), 3.vpn_data(данные о vpn))
+# создание всех БД для работы(1.UserINFO(общие данные о пользователях), 2.TempData(временные данные), 3.VpnData(данные о vpn))
 async def db_start():
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
-
+    # данные о пользователе
     cur.execute(
         "CREATE TABLE IF NOT EXISTS UserINFO("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -23,7 +23,7 @@ async def db_start():
         "used_promocodes TEXT"
         ")"
     )
-
+    # временные данные
     cur.execute(
         "CREATE TABLE IF NOT EXISTS TempData("
         "user_id INTEGER, "
@@ -33,17 +33,31 @@ async def db_start():
         "payment_key TEXT UNIQUE"
         ")"
     )
-
+    # данные о VPN
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS vpn_data("
+        "CREATE TABLE IF NOT EXISTS VpnData("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "user_id INTEGER, "
         "user_name TEXT, "
         "location TEXT, "
         "active BOOLEAN, "
-        "expiration_date DATETIME "
+        "expiration_date DATETIME, "
+        "name_of_vpn TEXT, "
+        "vpn_config TEXT"
         ")"
-)
+    )
+    # таблица для отслеживания истории операций пользователя 
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS OperationsHistory("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "user_id INTEGER UNIQUE, "
+        "user_name TEXT, "
+        "operations TEXT, "
+        "time_of_operation TEXT, " 
+        "description_of_operation TEXT" 
+        ")"
+    )
+
     db.commit()
 
 """****************************************************** РЕДАКТИРОВАНИЕ UserINFO *********************************************"""
@@ -85,7 +99,7 @@ async def get_balance(user_name):
 # операция по покупке (снятие денег)
 async def buy_operation(user_id, user_name):
     balance = await get_balance(user_name=user_name)
-    if int(balance) >= float(VPN_price_token):
+    if int(balance) >= float(VPN_PRICE_TOKEN):
         db = sq.connect('UserINFO.db')
         cur = db.cursor()
         payment_key = str(uuid.uuid4())
@@ -95,7 +109,7 @@ async def buy_operation(user_id, user_name):
         )
         cur.execute(
             "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
-            (VPN_price_token, user_name,)
+            (VPN_PRICE_TOKEN, user_name,)
         )
         db.commit()
         db.close()
@@ -166,9 +180,9 @@ async def save_promocode(user_id, promocode):
         cur.execute("UPDATE UserINFO SET used_promocodes = ? WHERE user_id = ?", (f"{promocode},", user_id))
         db.commit()
 
-"""*************************************************** РЕДАКТИРОВАНИЕ vpn_data *********************************************"""
+"""*************************************************** РЕДАКТИРОВАНИЕ VpnData *********************************************"""
 # обновление данных о vpn
-async def update_vpn_state(user_id, user_name, location, active, expiration_days):
+async def update_vpn_state(user_id, user_name, location, active, expiration_days, name_of_vpn, vpn_config):
     with sq.connect('UserINFO.db') as db:
         check_expired_vpns()
         cur = db.cursor()
@@ -176,8 +190,8 @@ async def update_vpn_state(user_id, user_name, location, active, expiration_days
         expiration_date = now + timedelta(days=int(expiration_days)) 
         expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
         cur.execute(
-            "INSERT INTO vpn_data (user_id, user_name, location, active, expiration_date) VALUES (?, ?, ?, ?, ?)",
-            (user_id, user_name, location, active, expiration_date_str)
+            "INSERT INTO VpnData (user_id, user_name, location, active, expiration_date, name_of_vpn, vpn_config) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (user_id, user_name, location, active, expiration_date_str, name_of_vpn, vpn_config)
         )
         db.commit()
 
@@ -188,7 +202,7 @@ async def extend_vpn_state(user_id, location, active, expiration_date, id):
         cur = db.cursor()
         expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
         cur.execute(
-            "UPDATE vpn_data SET active=?, expiration_date=?, location=? WHERE user_id=? AND id=?",
+            "UPDATE VpnData SET active=?, expiration_date=?, location=? WHERE user_id=? AND id=?",
             (active, expiration_date_str, location, user_id, id)
         )
         db.commit()
@@ -199,13 +213,13 @@ def check_expired_vpns():
         cur = db.cursor()
         current_time = datetime.now()  # Получаем текущее время в Python
         current_time_str = current_time.strftime("%Y.%m.%d %H:%M:%S")  # Преобразуем в строку с форматом 
-        cur.execute(f"SELECT * FROM vpn_data WHERE expiration_date < '{current_time_str}'")  # Используем строку в запросе
+        cur.execute(f"SELECT * FROM VpnData WHERE expiration_date < '{current_time_str}'")  # Используем строку в запросе
         vpn_data = cur.fetchall()
         for vpn in vpn_data:
             user_id = vpn[0]
             expiration_date_str = vpn[3]
             expiration_date = datetime.strptime(expiration_date_str, "%Y.%m.%d %H:%M:%S")
-            cur.execute("DELETE FROM vpn_data WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
+            cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
             db.commit()
             print(f"VPN для пользователя {user_id} с датой окончания {expiration_date} удален.")
 
@@ -214,13 +228,46 @@ async def get_vpn_data(user_id):
     with sq.connect('UserINFO.db') as db:
         check_expired_vpns()
         cur = db.cursor()
-        cur.execute("SELECT * FROM vpn_data WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT * FROM VpnData WHERE user_id = ?", (user_id,))
         vpn_data = cur.fetchall()
         if vpn_data == None:
             return None
         else:
             return vpn_data
     
+"""************************************************** РЕДАКТИРОВАНИЕ OperationsHistory ************************************************"""
+
+async def edit_operations_history(user_id, user_name, operations, description_of_operation):
+    operation_time = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT operations, time_of_operation, description_of_operation FROM OperationsHistory WHERE user_id = ?", (user_id,))
+        existing_data = cur.fetchone()
+        
+        if existing_data:
+            existing_operations, existing_time, existing_description = existing_data
+            operations = str(existing_operations) + "," + str(operations) if str(existing_operations) else str(operations)
+            time_of_operation = existing_time + "," + operation_time if existing_time else operation_time
+            description_of_operation = existing_description + "," + description_of_operation if existing_description else description_of_operation
+            cur.execute("UPDATE OperationsHistory SET operations = ?, time_of_operation = ?, description_of_operation = ? WHERE user_id = ?", 
+                        (operations, time_of_operation, description_of_operation, user_id))
+        else:
+            cur.execute("INSERT INTO OperationsHistory(user_id, user_name, operations, time_of_operation, description_of_operation) VALUES (?, ?, ?, ?, ?)",
+                        (user_id, user_name, operations, operation_time, description_of_operation))
+
+        db.commit()
+
+
+async def getting_operation_history(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT * FROM OperationsHistory WHERE user_id = ?", (user_id,))
+        operation_history = cur.fetchall()
+        if operation_history is None:
+            return None
+        else:
+            return operation_history
+
 """************************************************** РЕДАКТИРОВАНИЕ TempData *********************************************************"""
 # сохранение сообщений и inline кнопок, для последующего использования кнопки "Назад"
 async def save_temp_message(user_id, message_text, message_markup):
