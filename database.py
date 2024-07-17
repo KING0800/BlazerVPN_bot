@@ -20,7 +20,8 @@ async def db_start():
         "balance INTEGER DEFAULT 0,"
         "time_of_registration TEXT,"
         "referrer_id INTEGER, "
-        "used_promocodes TEXT"
+        "used_promocodes TEXT,"
+        "is_ban BOOLEAN DEFAULT False"
         ")"
     )
     # временные данные
@@ -71,7 +72,7 @@ async def edit_profile(user_name, user_id, referrer_id=None):
         )
         row = cur.fetchone()
         if row is None:
-            registration_time = datetime.now().strftime("%Y.%m.%d %H:%M:%S")  # Получаем время в нужном формате
+            registration_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")  # Получаем время в нужном формате
             if referrer_id is not None:
                 cur.execute(
                     "INSERT INTO UserINFO(user_id, user_name, time_of_registration, referrer_id) VALUES (?, ?, ?, ?)",
@@ -85,16 +86,29 @@ async def edit_profile(user_name, user_id, referrer_id=None):
         db.commit()
 
 # получение данных о балансе пользователя
-async def get_balance(user_name):
+async def get_balance(user_name=None, user_id=None):
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
-        cur.execute(
-            "SELECT balance FROM UserINFO WHERE user_name = ?",
-            (user_name,)
-        )
-        row = cur.fetchone()
-        if row is not None:
-            return row[0]
+        if user_name != None:
+            cur.execute(
+                "SELECT balance FROM UserINFO WHERE user_name = ?",
+                (user_name,)
+            )
+            row = cur.fetchone()
+            if row is not None:
+                return row[0]
+            else:
+                return None
+        elif user_id != None:
+            cur.execute(
+                "SELECT balance FROM UserINFO WHERE user_id = ?",
+                (user_id,)
+            )
+            row = cur.fetchone()
+            if row is not None:
+                return row[0]
+            else:
+                return None
     
 # операция по покупке (снятие денег)
 async def buy_operation(user_id, user_name):
@@ -118,24 +132,36 @@ async def buy_operation(user_id, user_name):
         raise ValueError("Insufficient funds")
     
 # операция по пополнению баланса
-async def pay_operation(price, user_id):
+async def pay_operation(price, user_id=None, user_name=None):
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
-    cur.execute(
-        "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
-        (price, user_id,)
-    )
+    if user_name == None:
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
+            (price, user_id,)
+        )
+    elif user_id == None:
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance + ? WHERE user_name = ?",
+            (price, user_name,)
+        )
     db.commit()
     db.close()
 
 # операция по удалению денег с баланса (ВРЕМЕННАЯ АДМИН КОМАНДА)
-async def delete_sum_operation(price, user_id):
+async def delete_sum_operation(price, user_id=None, user_name=None):
     db = sq.connect('UserINFO.db')
     cur = db.cursor()
-    cur.execute(
-        "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
-        (price, user_id,)
-    )
+    if user_name == None:
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
+            (price, user_id,)
+        )
+    elif user_id == None:
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
+            (price, user_name,)
+        )
     db.commit()
     db.close()
 
@@ -149,6 +175,22 @@ async def find_user(user_id):
         ).fetchall()
         return bool(len(result))
         db.commit()
+
+async def find_user_data(user_id=None, user_name=None):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        if user_id != None:
+            result = cur.execute("SELECT * FROM UserINFO WHERE user_id = ?", (user_id,)).fetchall()
+            if result != None:
+                return result
+            else:
+                return None
+        elif user_name != None:
+            result = cur.execute("SELECT * FROM UserINFO WHERE user_name = ?", (user_name,)).fetchall()
+            if result != None:
+                return result
+            else:
+                return None
 
 # нахождение рефералов по user_id
 async def get_referrer_username(user_id):
@@ -180,6 +222,56 @@ async def save_promocode(user_id, promocode):
         cur.execute("UPDATE UserINFO SET used_promocodes = ? WHERE user_id = ?", (f"{promocode},", user_id))
         db.commit()
 
+# система блокировки пользователей
+async def ban_users_handle(user_id=None, user_name=None):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        if user_id != None:
+            cur.execute("SELECT is_ban FROM UserINFO WHERE user_id = ?", (user_id,))
+            result = cur.fetchone()
+            if result[0] == 'False':
+                cur.execute("UPDATE UserINFO SET is_ban = 'True' WHERE user_id = ?", (user_id,))
+                return
+            else:
+                return "banned"
+        elif user_name != None:
+            cur.execute("SELECT is_ban FROM UserINFO WHERE user_name = ?", (user_name,))
+            result = cur.fetchone()
+            if result[0] == "False":
+                cur.execute("UPDATE UserINFO SET is_ban = 'True' WHERE user_name = ?", (user_name,))
+            else:
+                return "banned"
+            
+# система разблокировки пользователей
+async def unban_users_handle(user_id=None, user_name=None):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        if user_id != None:
+            cur.execute("SELECT is_ban FROM UserINFO WHERE user_id = ?", (user_id,))
+            result = cur.fetchone()
+            if result[0] == 'True':
+                cur.execute("UPDATE UserINFO SET is_ban = 'False' WHERE user_id = ?", (user_id,))
+                return
+            else:
+                return "unbanned"
+        elif user_name != None:
+            cur.execute("SELECT is_ban FROM UserINFO WHERE user_name = ?", (user_name,))
+            result = cur.fetchone()
+            if result[0] == "True":
+                cur.execute("UPDATE UserINFO SET is_ban = 'False' WHERE user_name = ?", (user_name,))
+            else:
+                return "unbanned"
+            
+async def is_user_ban_check(user_id):
+    with sq.connect('UserINFO.db') as db:
+        cur = db.cursor()
+        result = cur.execute("SELECT is_ban FROM UserINFO WHERE user_id = ?", (user_id,)).fetchone()
+        if result[0] == 'False':
+            return False
+        elif result[0] == 'True':
+            return True
+
+
 """*************************************************** РЕДАКТИРОВАНИЕ VpnData *********************************************"""
 # обновление данных о vpn
 async def update_vpn_state(user_id, user_name, location, active, expiration_days, name_of_vpn, vpn_config):
@@ -188,7 +280,7 @@ async def update_vpn_state(user_id, user_name, location, active, expiration_days
         cur = db.cursor()
         now = datetime.now()
         expiration_date = now + timedelta(days=int(expiration_days)) 
-        expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
+        expiration_date_str = expiration_date.strftime("%d.%m.%Y %H:%M:%S")
         cur.execute(
             "INSERT INTO VpnData (user_id, user_name, location, active, expiration_date, name_of_vpn, vpn_config) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (user_id, user_name, location, active, expiration_date_str, name_of_vpn, vpn_config)
@@ -200,45 +292,55 @@ async def extend_vpn_state(user_id, location, active, expiration_date, id):
     with sq.connect('UserINFO.db') as db:
         check_expired_vpns()
         cur = db.cursor()
-        expiration_date_str = expiration_date.strftime("%Y.%m.%d %H:%M:%S")
+        expiration_date_str = expiration_date.strftime("%d.%m.%Y %H:%M:%S")
         cur.execute(
             "UPDATE VpnData SET active=?, expiration_date=?, location=? WHERE user_id=? AND id=?",
             (active, expiration_date_str, location, user_id, id)
         )
         db.commit()
 
-# удаляет записи старых vpn, когда у них кончается срок
+
 def check_expired_vpns():
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
-        current_time = datetime.now()  # Получаем текущее время в Python
-        current_time_str = current_time.strftime("%Y.%m.%d %H:%M:%S")  # Преобразуем в строку с форматом 
-        cur.execute(f"SELECT * FROM VpnData WHERE expiration_date < '{current_time_str}'")  # Используем строку в запросе
+        current_time = datetime.now()
+        current_time_str = current_time.strftime("%d.%m.%Y %H:%M:%S")
+        cur.execute("SELECT * FROM VpnData WHERE expiration_date < ?", (current_time_str,)) 
         vpn_data = cur.fetchall()
-        for vpn in vpn_data:
-            user_id = vpn[0]
-            expiration_date_str = vpn[3]
-            expiration_date = datetime.strptime(expiration_date_str, "%Y.%m.%d %H:%M:%S")
-            cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
-            db.commit()
-            print(f"VPN для пользователя {user_id} с датой окончания {expiration_date} удален.")
+        if vpn_data: 
+            for vpn in vpn_data:
+                user_id = vpn[1]
+                expiration_date_str = vpn[5]
+                expiration_date = datetime.strptime(expiration_date_str, "%d.%m.%Y %H:%M:%S")
+                if current_time > expiration_date:
+                    cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
+                    db.commit()
+                    print(f"VPN для пользователя {user_id} с датой окончания {expiration_date} удален.")
 
 # получение данных общих данных о vpn
-async def get_vpn_data(user_id):
+async def get_vpn_data(user_id=None, user_name=None):
     with sq.connect('UserINFO.db') as db:
         check_expired_vpns()
         cur = db.cursor()
-        cur.execute("SELECT * FROM VpnData WHERE user_id = ?", (user_id,))
-        vpn_data = cur.fetchall()
-        if vpn_data == None:
-            return None
-        else:
-            return vpn_data
+        if user_id != None:
+            cur.execute("SELECT * FROM VpnData WHERE user_id = ?", (user_id,))
+            vpn_data = cur.fetchall()
+            if vpn_data == None:
+                return None
+            else:
+                return vpn_data
+        elif user_name != None:
+            cur.execute("SELECT * FROM VpnData WHERE user_name = ?", (user_name,))
+            vpn_data = cur.fetchall()
+            if vpn_data == None:
+                return None
+            else:
+                return vpn_data
     
 """************************************************** РЕДАКТИРОВАНИЕ OperationsHistory ************************************************"""
 
 async def edit_operations_history(user_id, user_name, operations, description_of_operation):
-    operation_time = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+    operation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
     with sq.connect('UserINFO.db') as db:
         cur = db.cursor()
         cur.execute("SELECT operations, time_of_operation, description_of_operation FROM OperationsHistory WHERE user_id = ?", (user_id,))
@@ -333,3 +435,5 @@ async def find_message_id(user_id):
         message_id = cur.fetchone()[0]
         db.commit()
         return message_id
+
+

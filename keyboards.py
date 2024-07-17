@@ -1,27 +1,47 @@
+import os
+from dotenv import load_dotenv, find_dotenv
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-start_keyboard = InlineKeyboardMarkup()
-start_keyboard.add(
-            InlineKeyboardButton(text="🛒 Купить VPN ", callback_data="buy_vpn"),
-            InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extension_vpn")
+load_dotenv(find_dotenv())
+
+BLAZER_CHAT_TOKEN = os.getenv("Blazer_chat_token") 
+ANUSH_CHAT_TOKEN = os.getenv("Anush_chat_token")
+
+async def start_kb_handle(user_id):
+    start_keyboard = InlineKeyboardMarkup()
+    start_keyboard.add(
+                InlineKeyboardButton(text="🛒 Купить VPN ", callback_data="buy"),
+                InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extension_vpn")
+    )
+    start_keyboard.add(
+        InlineKeyboardButton(text="🛡️ Мои VPN", callback_data="myvpn_callback")
+    )
+    start_keyboard.add(
+                InlineKeyboardButton(text="💵 Узнать баланс 💵", callback_data="balance")
+    )
+    start_keyboard.add(
+        InlineKeyboardButton(text="🧑‍💻 Связь с разрабочиком", callback_data="help_callback"),
+        InlineKeyboardButton(text="🆘 Поддержка", callback_data="support_callback")
+    )
+    start_keyboard.add(
+        InlineKeyboardButton(text="🤝 Реферальная система", callback_data="ref_system_callback"),
+        InlineKeyboardButton(text="🎟 Промокоды", callback_data="promo_callback")
+    )
+    start_keyboard.add(
+        InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback")
+    )
+    if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN):
+        start_keyboard.add(
+            InlineKeyboardButton(text="🤖 Админ панель", callback_data="adm_panel_callback")
+        )
+        return start_keyboard
+    else:
+        return start_keyboard
+support_keyboard = InlineKeyboardMarkup()
+support_keyboard.add(
+        InlineKeyboardButton(text="🆘 Поддержка", callback_data="support_callback")
 )
-start_keyboard.add(
-    InlineKeyboardButton(text="🛡️ Мои VPN", callback_data="myvpn_callback")
-)
-start_keyboard.add(
-            InlineKeyboardButton(text="💵 Узнать баланс 💵", callback_data="balance")
-)
-start_keyboard.add(
-    InlineKeyboardButton(text="🧑‍💻 Связь с разрабочиком", callback_data="help_callback"),
-    InlineKeyboardButton(text="🆘 Поддержка", callback_data="support_callback")
-)
-start_keyboard.add(
-    InlineKeyboardButton(text="🤝 Реферальная система", callback_data="ref_system_callback"),
-    InlineKeyboardButton(text="🎟 Промокоды", callback_data="promo_callback")
-)
-start_keyboard.add(
-    InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback")
-)
+
 
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
@@ -79,7 +99,7 @@ insturtion_keyboard.add(
 
 buy_keyboard = InlineKeyboardMarkup()
 buy_keyboard.add(
-    InlineKeyboardButton(text="🛒 Купить VPN", callback_data="buy_vpn"),
+    InlineKeyboardButton(text="🛒 Купить VPN", callback_data="buy"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -90,7 +110,7 @@ extend_keyboard.add(
 )
 own_vpn_keyboard = InlineKeyboardMarkup()
 own_vpn_keyboard.add(
-    InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy_vpn"),
+    InlineKeyboardButton(text="Купить VPN 🛒", callback_data="buy"),
     InlineKeyboardButton(text="Назад ⬅️", callback_data="back")
 )
 numbers_for_replenishment = InlineKeyboardMarkup()
@@ -131,5 +151,47 @@ payment_type.add(
 promocode_keyboard = InlineKeyboardMarkup()
 promocode_keyboard.add(
     InlineKeyboardButton(text="Сообщество VK", url="https://vk.com/blazervpn"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+
+device_keyboard = InlineKeyboardMarkup()
+device_keyboard.add(
+    InlineKeyboardButton(text="📱 Android", callback_data="Android_device_callback"),
+    InlineKeyboardButton(text="🍏 iOS", callback_data="IOS_device_callback")
+)
+device_keyboard.add(
+    InlineKeyboardButton(text="🖥 Windows", callback_data="komp_device_callback"),
+    InlineKeyboardButton(text="🍏 MacOS", callback_data="MacOS_callback")
+)
+device_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+
+adm_panel_keyboard = InlineKeyboardMarkup()
+adm_panel_keyboard.add(
+    InlineKeyboardButton(text="💵 Пополнение баланса", callback_data="addind_balance_callback"),
+    InlineKeyboardButton(text="💵 Удаление баланса", callback_data="deleting_balance_callback")
+)
+adm_panel_keyboard.add(
+    InlineKeyboardButton(text="🗃 Данные о пользователе", callback_data="user_data_callback"), 
+    InlineKeyboardButton(text="🛡️ VPN пользователей", callback_data="vpn_user_callback")
+)
+adm_panel_keyboard.add(
+    InlineKeyboardButton(text="❌ Заблокировать пользователя", callback_data="ban_user_callback"),
+    InlineKeyboardButton(text="✅ Разблокировать пользователя", callback_data="unban_user_callback")
+)
+adm_panel_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+
+user_find_data = InlineKeyboardMarkup()
+user_find_data.add(
+    InlineKeyboardButton(text="❌ Заблокировать пользователя", callback_data="ban_user2_callback"),
+    InlineKeyboardButton(text="✅ Разблокировать пользователя", callback_data="unban_user2_callback")
+)
+user_find_data.add(
+    InlineKeyboardButton(text="🛡️ VPN пользователя", callback_data="vpn_user2_callback")
+)
+user_find_data.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )

@@ -51,18 +51,8 @@ def create_payment(amount, chat_id, payment_type, user_email):
 
 
 def check(payment_id):
-    try:
-        payment = yookassa.Payment.find_one(payment_id)
-        if payment.status == 'succeeded':
-            if payment.receipt_registration == 'succeeded':
-                pass
-            else:
-                pass
-            return payment.metadata
-        elif payment.status in ['pending', 'canceled', 'waiting_for_capture', 'failed']:
-            return False
-        else:
-            return False
-    except Exception as e:
+    payment = yookassa.Payment.find_one(payment_id)
+    if payment.status == 'succeeded':
+        return payment.metadata
+    else:
         return False
-
