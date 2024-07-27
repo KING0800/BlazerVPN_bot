@@ -6,7 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv('.env')
-VPN_PRICE_TOKEN = os.getenv("VPN_price_token") 
+VPN_PRICE_TOKEN = os.getenv("VPN_PRICE_TOKEN") 
 
 # Создание таблицы UserInfo
 async def UserInfo_db_start():
@@ -137,7 +137,17 @@ async def check_promocode_used(user_id, promocode):
 async def save_promocode(user_id, promocode):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("UPDATE UserINFO SET used_promocodes = ? WHERE user_id = ?", (f"{promocode},", user_id))
+        cur.execute("SELECT used_promocodes FROM UserINFO WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()
+        used_promocodes = result[0] if result else ""
+
+        if used_promocodes:
+            used_promocodes += f",{promocode}"
+        else:
+            used_promocodes = promocode
+
+        # Обновляем запись
+        cur.execute("UPDATE UserINFO SET used_promocodes = ? WHERE user_id = ?", (used_promocodes, user_id))
         db.commit()
 
 """****************************************************************** АДМИН ФУНКЦИИ *****************************************************************"""

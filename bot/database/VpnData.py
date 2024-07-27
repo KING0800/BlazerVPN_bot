@@ -15,25 +15,20 @@ async def VpnData_db_start():
         "active BOOLEAN, "
         "expiration_date DATETIME, "
         "name_of_vpn TEXT, "
-        "vpn_config TEXT"
+        "vpn_config TEXT" 
         ")"
     )
         db.commit()
 
 # обновление данных о vpn
-async def update_vpn_state(user_id, user_name, location, active, expiration_days, name_of_vpn, vpn_config):
+async def update_vpn_state(order_id, active, expiration_days, name_of_vpn, vpn_config):
     with sq.connect('database.db') as db:
-        check_expired_vpns()
         cur = db.cursor()
-        now = datetime.now()
-        expiration_date = now + timedelta(days=int(expiration_days)) 
-        expiration_date_str = expiration_date.strftime("%d.%m.%Y %H:%M:%S")
         cur.execute(
-            "INSERT INTO VpnData (user_id, user_name, location, active, expiration_date, name_of_vpn, vpn_config) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, user_name, location, active, expiration_date_str, name_of_vpn, vpn_config)
+            "UPDATE VpnData SET active = ?, expiration_date = ?, name_of_vpn = ?, vpn_config = ? WHERE id = ?",
+            (active, expiration_days, name_of_vpn, vpn_config, order_id)
         )
         db.commit()
-
 # обновление данных после продления VPN
 async def extend_vpn_state(user_id, location, active, expiration_date, id):
     with sq.connect('database.db') as db:
@@ -85,3 +80,22 @@ async def get_vpn_data(user_id=None, user_name=None):
             else:
                 return vpn_data
         db.commit()
+
+
+async def save_order_id(user_id, user_name, location):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "INSERT INTO VpnData (user_id, user_name, location) VALUES (?, ?, ?)",
+            (user_id, user_name, location)
+        )
+        order_id = cur.lastrowid
+        db.commit()
+        return order_id
+    
+async def get_order_id(order_id):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()        
+        cur.execute("SELECT * FROM VpnData WHERE id = ?", (order_id,))
+        order_data = cur.fetchone()
+        return order_data

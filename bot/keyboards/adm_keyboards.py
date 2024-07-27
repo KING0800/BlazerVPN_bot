@@ -40,7 +40,27 @@ def reply_keyboard(user_id) -> InlineKeyboardMarkup:
     return reply_keyboard
 
 # кнопки по ответу пользователю после покупки пользователем VPN
-reply_buy_keyboard = InlineKeyboardMarkup()
-reply_buy_keyboard.add(
-    InlineKeyboardButton(text="↩️ Ответить", callback_data="reply_buy_keyboard")
+def reply_buy_keyboard(pay_id, country, user_id) -> InlineKeyboardMarkup:
+    reply_buy_keyboard = InlineKeyboardMarkup()
+    reply_buy_keyboard.add(
+        InlineKeyboardButton(text="↩️ Ответить", callback_data=f"reply_buy_keyboard.{pay_id}.{country}.{user_id}")
+    )
+    return reply_buy_keyboard
+
+
+about_yourself_to_add_keyboard = InlineKeyboardMarkup()
+about_yourself_to_add_keyboard.add(
+    InlineKeyboardButton(text="💵 Для себя", callback_data="about_yourself_callback")
+)
+about_yourself_to_add_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+
+about_yourself_to_delete_keyboard = InlineKeyboardMarkup()
+about_yourself_to_delete_keyboard.add(
+    InlineKeyboardButton(text="💵 Для себя", callback_data="about_yourself_to_delete_callback")
+
+)
+about_yourself_to_delete_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-BLAZER_CHAT_TOKEN = os.getenv("Blazer_chat_token") 
-ANUSH_CHAT_TOKEN = os.getenv("Anush_chat_token")
+BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN") 
+ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
 
 # стартовая клавиатура, чтобы управлять вообще ботом
 def start_kb_handle(user_id) -> InlineKeyboardMarkup:
@@ -168,5 +168,32 @@ device_keyboard.add(
     InlineKeyboardButton(text="🍏 MacOS", callback_data="MacOS_callback")
 )
 device_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+
+ref_system_keyboard = InlineKeyboardMarkup()
+ref_system_keyboard.add(
+    InlineKeyboardButton(text="🤝 Реферальная система", callback_data="ref_system_callback"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+
+find_balance_keyboard = InlineKeyboardMarkup()
+find_balance_keyboard.add(
+    InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+
+balance_handle_keyboard = InlineKeyboardMarkup()
+balance_handle_keyboard.add(
+    InlineKeyboardButton(text="💵 Пополнить баланс", callback_data="replenishment"),
+    InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback")
+)
+balance_handle_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+
+help_kb = InlineKeyboardMarkup()
+help_kb.add(
+    InlineKeyboardButton(text="Связь с разработчиком 🧑‍💻", url="https://t.me/KING_08001"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
 )
