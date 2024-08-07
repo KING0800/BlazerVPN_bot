@@ -23,6 +23,7 @@ from bot.keyboards.adm_keyboards import reply_keyboard, reply_buy_keyboard
 
 from bot.utils.payment import check, create_payment
 
+# импорт токенов из файла .env
 load_dotenv('.env')
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN") 
@@ -145,7 +146,7 @@ async def help_kb_handle(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer("• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
         return
     else:
-        await callback.message.edit_text("• 🧑‍💻 <b>Связь с разработчиком</b>:\n\nДля связи с разработчиком бота перейдите по ссылке: \n\nhttps://t.me/KING_08001", reply_markup=help_kb, parse_mode="HTML")
+        await callback.message.edit_text("• 🧑‍💻 <b>Связь с разработчиком</b>:\n\nДля связи с разработчиком бота перейдите по <b><a href = 'https://t.me/KING_08001'>ссылке</a></b>", reply_markup=help_kb, parse_mode="HTML")
         await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
 """*********************************************** ВЫБОР ЛОКАЦИИ И ПОКУПКА ВПН ************************************************************************"""
@@ -321,10 +322,10 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                     days_remaining = (expiration_date - datetime.datetime.now()).days
                 new_expiration_date = expiration_date + datetime.timedelta(days=30)
                 await extend_vpn_state(user_id=user_id, location=location, active=True, expiration_date=new_expiration_date, id=id)    
-                await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\nVPN 🛡 продлен на <code>30</code>  дней ✅ \n\nДо окончания действия VPN 🛡 осталось <code>{days_remaining + 30}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
-                vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
-                await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"<b>• Продление VPN </b>🛡:\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"<b>• Продление VPN </b>🛡:\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\nVPN продлен на <code>30</code>  дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 30}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
+                vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining + 30}</code> дней\n\n"
+                await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await save_temp_message(callback.from_user.id, callback.message.text, None)
             else:
                 await callback.answer("У вас недостаточно средств ❌")
@@ -348,9 +349,9 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                 vpn_config = vpn[7]
                 days_remaining = (expiration_date - datetime.datetime.now()).days
                 new_expiration_date = expiration_date + datetime.timedelta(days=30)
-                vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
+                vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining + 30}</code> дней\n\n"
                 await extend_vpn_state(user_id=user_id, location=location, active=True, expiration_date=new_expiration_date, id=id)
-                await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>🛡:\n\nVPN 🛡 продлен на 1 месяц ✅ \n\nДо окончания действия VPN 🛡 осталось {days_remaining + 30} дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
+                await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>:\n\nVPN продлен на <code>30</code> дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 30}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
                 await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} <code>(ID: {user_id})</code>\nПродлил VPN 🛡 на 30 дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await save_temp_message(callback.from_user.id, callback.message.text, None)
@@ -447,6 +448,9 @@ async def user_email_handle(message: types.Message, state: FSMContext):
             dns.resolver.resolve(user_email.split('@')[1], 'MX')
         except dns.resolver.NXDOMAIN:
             await message.answer("• 💵 <b>Пополнение баланса</b>:\n\nДомен не существует ❌ Пожалуйста, введите его снова:", reply_markup=back_keyboard, parse_mode="HTML")
+            return
+        except dns.resolver.LifetimeTimeout:
+            await message.answer("• 💵 <b>Пополнение баланса</b>:\n\nПроизошла ошибка❌ Пожалуйста, введите адрес электронной почты снова:", reply_markup=back_keyboard, parse_mode="HTML")
             return
 
         await message.answer("• 💵 <b>Пополнение баланса</b>:\n\nВаш адрес электронной почты принят ✅ \n\nВыберите платежную систему:", reply_markup=payment_type, parse_mode="HTML")
@@ -671,7 +675,7 @@ async def history_of_opeartions_handle(callback: types.CallbackQuery):
     else:
         operation_history = await getting_operation_history(user_id=user_id)
         if operation_history is None or operation_history == []:
-            await callback.message.answer("• 📋 <b>История операций</b>:\n\nУ вас нет истории операций ❌", reply_markup=replenishment_balance, parse_mode="HTML")
+            await callback.message.edit_text("• 📋 <b>История операций</b>:\n\nУ вас нет истории операций ❌", reply_markup=replenishment_balance, parse_mode="HTML")
             return
         message_text = "• 📋 <b>История операций</b>:\n\n"
         for operation in operation_history:
@@ -723,9 +727,9 @@ async def back_handle(callback: types.CallbackQuery, state):
                 await callback.message.edit_text(message_text, reply_markup=message_markup, parse_mode="HTML")
                 await delete_temp_message(user_id, message_id)
             else:
-                await callback.message.edit_text(start_message_for_reply, reply_markup=start_kb_handle(user_id) )
+                await callback.message.edit_text(start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
         except Exception as e:
-            await callback.message.answer("Вы возвращены на начальное меню.", reply_markup=start_kb_handle(user_id) )
+            await callback.message.answer(start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
     await callback.answer("")
 
 """**************************************************** СИСТЕМА РЕГИСТРИРОВАНИЯ ВСЕХ ХЕНДЛЕРОВ *****************************************************"""

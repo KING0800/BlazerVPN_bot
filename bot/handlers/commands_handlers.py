@@ -16,6 +16,8 @@ from bot.database.OperationsData import getting_operation_history
 from bot.database.SupportData import getting_question
 
 
+"""********************************************************************** СОСТОЯНИЯ ******************************************************************"""
+
 class PromocodeStates(StatesGroup):
     WAITING_FOR_USER_PROMOCODE = State()
 
@@ -50,11 +52,13 @@ class BanUserState(StatesGroup):
 class UnbanUserState(StatesGroup):
     WAITING_FOR_USER_ID = State()
 
+# импорт токенов из файла .env
 load_dotenv('.env')
-
 VPN_PRICE_TOKEN = os.getenv("VPN_PRICE_TOKEN")
 ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN")
+
+"""******************************************************************* ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСЕХ КОМАНД *******************************************************"""
 
 async def handle_text(message: types.Message, state):
     user_id = message.from_user.id

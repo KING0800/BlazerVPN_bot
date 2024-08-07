@@ -66,6 +66,8 @@ class SupportRequest(NamedTuple):
 support_requests = []
 
 
+"""***************************************************************** """
+
 # обработка кнопки для пересылания конфига для активации VPN пользователя   
 async def send_message(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
@@ -101,14 +103,14 @@ async def handling_moder_file(message: types.Message, state: FSMContext):
             await state.finish()
             
         try:
-            expiration_date = datetime.now() + timedelta(days=30)
+            expiration_date = datetime.datetime.now() + timedelta(days=30)
             await update_vpn_state(order_id=int(order_id), active=True, expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S"), name_of_vpn=moder_file_name, vpn_config=moder_file)
         except Exception as e:
             await message.answer("• 🛒 <b>Покупка VPN</b>:\n\nПроизошла ошибка по время записи данных в базу данных ❌", parse_mode="HTML")
             await state.finish()
 
-        await message.answer(f"• 🛒 <b>Покупка VPN</b>:\n\nVPN пользователя @{order_data[2]} (ID: {order_data[1]}) активирован и добавлен в базу данных ✅", parse_mode="HTML")
-        await bot.send_document(order_data[1], moder_file, caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN успешно активирован ✅\n\n<i>Срок действия:</i> {expiration_date.strftime('%d.%m.%Y %H:%M:%S')}", parse_mode="HTML")
+        await message.answer(f"• 🛒 <b>Покупка VPN</b>:\n\nVPN пользователя @{order_data[2]} (ID: <code>{order_data[1]}</code>) активирован и добавлен в базу данных ✅", parse_mode="HTML")
+        await bot.send_document(order_data[1], moder_file, caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN успешно активирован ✅\n\n<i>Срок действия:</i> <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>", parse_mode="HTML")
         await state.finish()
     else:
         attempts = await state.get_data()
@@ -142,8 +144,8 @@ async def replying_for_moder(message: types.Message, state):
         answer = message.text
         try:
             await bot.send_message(questions_user_id, f"• 🆘 <b>Ответ от модератора:</b>\n\n{answer}", reply_markup=back_keyboard, parse_mode="HTML")
-            await bot.send_message(ANUSH_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nВопрос пользователя @{user_name} <code>(ID: {user_id})</code>:\n\n{question}\n\n<b>Ответ модератора:</b>\n\n{answer}", parse_mode='HTML')
-            await bot.send_message(BLAZER_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nВопрос пользователя @{user_name} <code>(ID: {user_id})</code>:\n\n{question}\n\n<b>Ответ модератора:</b>\n\n{answer}", parse_mode="HTML")
+            await bot.send_message(ANUSH_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nВопрос пользователя @{user_name} (ID: <code>{user_id})</code>:\n\n{question}\n\n<b>Ответ модератора:</b>\n\n{answer}", parse_mode='HTML')
+            await bot.send_message(BLAZER_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nВопрос пользователя @{user_name} (ID: <code>{user_id})</code>:\n\n{question}\n\n<b>Ответ модератора:</b>\n\n{answer}", parse_mode="HTML")
             await deleting_answered_reports(user_id=user_id)
         except ChatNotFound:
             await message.answer("Пользователь не найден!")
