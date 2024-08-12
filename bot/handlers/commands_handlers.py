@@ -268,55 +268,59 @@ async def handle_text(message: types.Message, state):
                 await save_temp_message(message.from_user.id, message.text, None)
 
         ##### ADM COMMANDS
-        elif message.text == "/add":
-            await message.answer("• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", reply_markup=about_yourself_to_add_keyboard, parse_mode="HTML")
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
-            else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
-        
-        elif message.text == "/delete":
-            await message.answer("• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", reply_markup=about_yourself_to_delete_keyboard, parse_mode="HTML")
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
-            else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
+        if message.text == "/add" or message.text == "/delete" or message.text == "/ban" or message.text == "/unban" or message.text == "/user_info" or message.text ==  "/user_vpn":
+            if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
+                if message.text == "/add":
+                    await message.answer("• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", reply_markup=about_yourself_to_add_keyboard, parse_mode="HTML")
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
+                
+                elif message.text == "/delete":
+                    await message.answer("• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", reply_markup=about_yourself_to_delete_keyboard, parse_mode="HTML")
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
 
-        elif message.text == "/ban":
-            await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите заблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
-            else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await BanUserState.WAITING_FOR_USER_ID.set()
-        
-        elif message.text == "/unban":
-            await message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите разблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
-            else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await UnbanUserState.WAITING_FOR_USER_ID.set()
+                elif message.text == "/ban":
+                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите заблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await BanUserState.WAITING_FOR_USER_ID.set()
+                
+                elif message.text == "/unban":
+                    await message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите разблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await UnbanUserState.WAITING_FOR_USER_ID.set()
 
-        elif message.text == "/user_info":
-            await message.answer("• 🗃 <b>Данные о пользователе:</b>\n\nВведите ID или USERNAME пользователя, информацию про которого хотите узнать: ", reply_markup=back_keyboard, parse_mode="HTML")
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
-            else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO.set()
+                elif message.text == "/user_info":
+                    await message.answer("• 🗃 <b>Данные о пользователе:</b>\n\nВведите ID или USERNAME пользователя, информацию про которого хотите узнать: ", reply_markup=back_keyboard, parse_mode="HTML")
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO.set()
 
-        elif message.text == "/user_vpn":
-            await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nВведите ID или USERNAME пользователя, информацию о VPN которого хотите узнать: ", reply_markup=back_keyboard, parse_mode="HTML")
-            if message.reply_markup:
-                await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                elif message.text == "/user_vpn":
+                    await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nВведите ID или USERNAME пользователя, информацию о VPN которого хотите узнать: ", reply_markup=back_keyboard, parse_mode="HTML")
+                    if message.reply_markup:
+                        await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
+                    else:
+                        await save_temp_message(message.from_user.id, message.text, None)
+                    await UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO.set()
             else:
-                await save_temp_message(message.from_user.id, message.text, None)
-            await UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO.set()
+                await message.answer("• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
         else:
-            await message.answer("Неверная команда. Пожалуйста, используйте одну из доступных команд (/help)", reply_markup=start_kb_handle(user_id))   
+            await message.answer("• ❌ <b>Ошибка:</b>\n\nНеверная команда. Пожалуйста, используйте одну из доступных команд (/help)", reply_markup=start_kb_handle(user_id), parse_mode="HTML")   
 
 
 def register_command_handlers(dp: Dispatcher) -> None:

@@ -272,9 +272,11 @@ async def unban_user2_handle(callback: types.CallbackQuery, state: FSMContext):
                 result = await unban_users_handle(user_id=user_id)
                 if result != "unbanned":
                     await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nПользователь успешно разблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.answer('')
                 else:
                     await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nЭтот пользователь уже разблокирован ❌", parse_mode="HTML", reply_markup=back_keyboard)
-                await state.finish()
+                    await callback.answer('')
+                await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
             else:
                 attempts = await state.get_data()
                 if attempts.get("attempts", 0) >= 3:
@@ -291,10 +293,11 @@ async def unban_user2_handle(callback: types.CallbackQuery, state: FSMContext):
                 result = await unban_users_handle(user_name=user_name)
                 if result != "unbanned":
                     await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nПользователь успешно разблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.answer('')
                 else:
                     await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nЭтот пользователь уже разблокирован ❌", parse_mode="HTML", reply_markup=back_keyboard)
-
-                await state.finish()
+                    await callback.answer('')
+                await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
             else:
                 attempts = await state.get_data()
                 if attempts.get("attempts", 0) >= 3:
@@ -302,7 +305,7 @@ async def unban_user2_handle(callback: types.CallbackQuery, state: FSMContext):
                     await state.finish()
                 else:
                     await state.update_data(attempts=attempts.get("attempts", 0) + 1)
-                    await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nnПользователь с таким <b>USERNAME</b> не найден ❌\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.message.answer("• ✅ <b>Разблокировка пользователя:</b>\n\nПользователь с таким <b>USERNAME</b> не найден ❌\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
 
 # обработка разблокировки пользователя 
 async def unban_user_handle(message: types.Message, state):
@@ -373,7 +376,7 @@ async def ban_user2_handle(callback: types.CallbackQuery, state: FSMContext):
                 else:
                     await callback.message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
                     await callback.answer('')
-                await state.finish()
+                await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
             else:
                 attempts = await state.get_data()
                 if attempts.get("attempts", 0) >= 3:
@@ -392,10 +395,11 @@ async def ban_user2_handle(callback: types.CallbackQuery, state: FSMContext):
                 result = await ban_users_handle(user_name=user_name)
                 if result != "banned":
                     await callback.message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь успешно заблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.answer('')
                 else:
                     await callback.message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
-
-                await state.finish()
+                    await callback.answer('')
+                await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
             else:
                 attempts = await state.get_data()
                 if attempts.get("attempts", 0) >= 3:
@@ -589,28 +593,10 @@ async def vpn_info_handle(callback: types.CallbackQuery, state: FSMContext):
     else:
         data = await state.get_data()
         try:
-            user_id = int(data.get("user_id"))
+            user_id1 = int(data.get("user_id"))
             user_name = None
-            vpn_data = await get_vpn_data(user_id=user_id)
-            if vpn_data != None:
-                for vpn in vpn_data:
-                    id = vpn[0]
-                    user_id = vpn[1]
-                    user_name = vpn[2]
-                    location = vpn[3]
-                    active = vpn[4]
-                    expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                    days_remaining = (expiration_date - datetime.datetime.now()).days
-                    name_of_vpn = vpn[6]
-                    vpn_config = vpn[7]
-                    await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
-            else:
-                await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
-        except Exception as e:
-            user_name = data.get("user_name")
-            user_id = None
-            vpn_data = await get_vpn_data(user_name=user_name)
-            user_info = await find_user_data(user_name=user_name)
+            vpn_data = await get_vpn_data(user_id=user_id1)
+            user_info = await find_user_data(user_id=user_id1)
             if user_info != None:
                 if vpn_data != None:
                     for vpn in vpn_data:
@@ -624,18 +610,54 @@ async def vpn_info_handle(callback: types.CallbackQuery, state: FSMContext):
                         name_of_vpn = vpn[6]
                         vpn_config = vpn[7]
                         await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        await callback.answer('')
+                        await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
                 else:
                     await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.answer('')
+                    await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
             else:
                 attempts = await state.get_data()
                 if attempts.get("attempts", 0) >= 3:
                     await callback.message.answer("Слишком много попыток ❌\n\nПопробуйте заново - /user_vpn")
+                    await callback.answer('')
                     await state.finish()
                 else:
                     await state.update_data(attempts=attempts.get("attempts", 0) + 1)
-                    await callback.message.answer("• 🗃 <b>Данные о пользователе</b>:\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести ID или USERNAME заново: ", parse_mode="HTML", reply_markup=back_keyboard)
-            
-                await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь с таким USERNAME не найдет ❌\n\nПопробуйте ввести USERNAME или ID заново:", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>:\n\nПользователь с таким <b>ID</b> не найден ❌\n\nПопробуйте ввести <b>ID</b> или <b>USERNAME</b> заново: ", parse_mode="HTML", reply_markup=back_keyboard)
+        except Exception:
+            user_name = data.get("user_name")
+            user_id = None
+            vpn_data = await get_vpn_data(user_name=user_name)
+            user_info = await find_user_data(user_name=user_name)
+            if user_info != [] or user_info != None:
+                if vpn_data != []:
+                    for vpn in vpn_data:
+                        id = vpn[0]
+                        user_id = vpn[1]
+                        user_name = vpn[2]
+                        location = vpn[3]
+                        active = vpn[4]
+                        expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
+                        days_remaining = (expiration_date - datetime.datetime.now()).days
+                        name_of_vpn = vpn[6]
+                        vpn_config = vpn[7]
+                        await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        await callback.answer('')
+                        await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
+                else:
+                    await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
+                    await callback.answer('')
+                    await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
+            else:
+                attempts = await state.get_data()
+                if attempts.get("attempts", 0) >= 3:
+                    await callback.message.answer("Слишком много попыток ❌\n\nПопробуйте заново - /user_vpn")
+                    await callback.answer('')
+                    await state.finish()
+                else:
+                    await state.update_data(attempts=attempts.get("attempts", 0) + 1)
+                    await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>:\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести <b>ID</b> или <b>USERNAME</b> заново: ", parse_mode="HTML", reply_markup=back_keyboard)
 
 # Пополнение баланса администратором
 async def handling_user_name(message: types.Message, state):
@@ -807,9 +829,9 @@ def register_adm_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(adm_panel_handle, lambda c: c.data == "adm_panel_callback")
     dp.register_callback_query_handler(adm_panel_buttons_handler, lambda c: c.data == "addind_balance_callback" or c.data == "deleting_balance_callback" or c.data == "user_data_callback" or c.data == "vpn_user_callback" or c.data == "ban_user_callback" or c.data == "unban_user_callback")
     dp.register_callback_query_handler(unban_user2_handle, lambda c: c.data == "unban_user2_callback", state=AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS)
-    dp.register_callback_query_handler(unban_user_handle, state=UnbanUserState.WAITING_FOR_USER_ID)
+    dp.register_message_handler(unban_user_handle, state=UnbanUserState.WAITING_FOR_USER_ID)
     dp.register_callback_query_handler(ban_user2_handle, lambda c: c.data == "ban_user2_callback", state=AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS)
-    dp.register_callback_query_handler(ban_user_handle, state=BanUserState.WAITING_FOR_USER_ID)
+    dp.register_message_handler(ban_user_handle, state=BanUserState.WAITING_FOR_USER_ID)
     dp.register_message_handler(find_info_about_users_vpn, state=UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO)
     dp.register_message_handler(find_user_info_for_adm_panel, state=AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO)
     dp.register_callback_query_handler(vpn_info_handle, lambda c: c.data == "vpn_user2_callback", state=AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS)
