@@ -75,7 +75,7 @@ async def get_balance(user_name=None, user_id=None):
                 return None
     
 # операция по покупке (снятие денег)
-async def buy_operation(user_id, user_name):
+async def buy_operation(user_id, user_name, price):
     balance = await get_balance(user_name=user_name)
     if int(balance) >= float(VPN_PRICE_TOKEN):
         with sq.connect('database.db') as db:
@@ -87,7 +87,7 @@ async def buy_operation(user_id, user_name):
             )
             cur.execute(
                 "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
-                (VPN_PRICE_TOKEN, user_name,)
+                (price, user_name,)
             )
             db.commit()
             return payment_key
@@ -96,6 +96,21 @@ async def buy_operation(user_id, user_name):
     
 # операция по пополнению баланса
 async def pay_operation(price, user_id=None, user_name=None):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        if user_name == None:
+            cur.execute(
+                "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
+                (price, user_id,)
+            )
+        elif user_id == None:
+            cur.execute(
+                "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
+                (price, user_name,)
+            )
+        db.commit()
+
+async def add_operation(price, user_id=None, user_name=None):
     with sq.connect('database.db') as db:
         cur = db.cursor()
         if user_name == None:
@@ -109,6 +124,7 @@ async def pay_operation(price, user_id=None, user_name=None):
                 (price, user_name,)
             )
         db.commit()
+
 
 # нахождение рефералов по user_id
 async def get_referrer_username(user_id):

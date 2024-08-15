@@ -22,11 +22,11 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance")
     )
     start_keyboard.add(
-        InlineKeyboardButton(text="🧑‍💻 Связь с разрабочиком", callback_data="help_callback"),
+        InlineKeyboardButton(text="🧑‍💻 Разработчик", callback_data="help_callback"),
         InlineKeyboardButton(text="🆘 Поддержка", callback_data="support_callback")
     )
     start_keyboard.add(
-        InlineKeyboardButton(text="🤝 Реферальная система", callback_data="ref_system_callback"),
+        InlineKeyboardButton(text="🤝 Рефералка", callback_data="ref_system_callback"),
         InlineKeyboardButton(text="🎟 Промокоды", callback_data="promo_callback")
     )
     start_keyboard.add(
@@ -34,7 +34,7 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
     )
     if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN):
         start_keyboard.add(
-            InlineKeyboardButton(text="🤖 Админ панель", callback_data="adm_panel_callback")
+            InlineKeyboardButton(text="🤖 Панель администратора", callback_data="adm_panel_callback")
         )
         return start_keyboard
     else:
@@ -49,12 +49,8 @@ support_keyboard.add(
 # клавиатура для выбора локаций при покупки VPN
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
-            #InlineKeyboardButton(text="🇸🇪 Швеция", callback_data="Sweden_callback"),
-            InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback")
-            #InlineKeyboardButton(text="🇩🇪 Германия", callback_data="Germany_callback"),
-)
-location_keyboard.add(
-    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+        InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback"),    
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
 # обработка покупки VPN на локации Швеция
@@ -164,7 +160,7 @@ device_keyboard.add(
     InlineKeyboardButton(text="🍏 iOS", callback_data="IOS_device_callback")
 )
 device_keyboard.add(
-    InlineKeyboardButton(text="🖥 Windows", callback_data="komp_device_callback"),
+    InlineKeyboardButton(text="🖥  Windows", callback_data="komp_device_callback"),
     InlineKeyboardButton(text="🍏 MacOS", callback_data="MacOS_callback")
 )
 device_keyboard.add(
@@ -173,7 +169,7 @@ device_keyboard.add(
 
 ref_system_keyboard = InlineKeyboardMarkup()
 ref_system_keyboard.add(
-    InlineKeyboardButton(text="🤝 Реферальная система", callback_data="ref_system_callback"),
+    InlineKeyboardButton(text="🤝 Рефералка", callback_data="ref_system_callback"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
 )
 
@@ -194,6 +190,6 @@ balance_handle_keyboard.add(
 
 help_kb = InlineKeyboardMarkup()
 help_kb.add(
-    InlineKeyboardButton(text="Связь с разработчиком 🧑‍💻", url="https://t.me/KING_08001"),
+    InlineKeyboardButton(text="🧑‍💻 Разработчик", url="https://t.me/KING_08001"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
 )

@@ -12,12 +12,12 @@ from aiogram.utils.exceptions import ChatNotFound
 
 from bot.database.OperationsData import edit_operations_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
-from bot.database.UserData import get_balance, pay_operation, get_referrer_username, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
+from bot.database.UserData import get_balance, add_operation, pay_operation, get_referrer_username, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
 from bot.database.VpnData import update_vpn_state, get_order_id, get_vpn_data
 from bot.database.SupportData import getting_question, deleting_answered_reports
 
 from bot.keyboards.user_keyboards import support_keyboard, back_keyboard
-from bot.keyboards.adm_keyboards import adm_panel_keyboard, user_find_data, about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard
+from bot.keyboards.adm_keyboards import adm_panel_keyboard, user_find_data, about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard, finish_buy_vpn
 
 load_dotenv('.env')
 
@@ -103,14 +103,14 @@ async def handling_moder_file(message: types.Message, state: FSMContext):
             await state.finish()
             
         try:
-            expiration_date = datetime.datetime.now() + timedelta(days=30)
+            expiration_date = datetime.datetime.now() + timedelta(days=28)
             await update_vpn_state(order_id=int(order_id), active=True, expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S"), name_of_vpn=moder_file_name, vpn_config=moder_file)
         except Exception as e:
             await message.answer("• 🛒 <b>Покупка VPN</b>:\n\nПроизошла ошибка по время записи данных в базу данных ❌", parse_mode="HTML")
             await state.finish()
 
-        await message.answer(f"• 🛒 <b>Покупка VPN</b>:\n\nVPN пользователя @{order_data[2]} (ID: <code>{order_data[1]}</code>) активирован и добавлен в базу данных ✅", parse_mode="HTML")
-        await bot.send_document(order_data[1], moder_file, caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN успешно активирован ✅\n\n<i>Срок действия:</i> <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>", parse_mode="HTML")
+        await message.answer(f"• 🛒 <b>Покупка VPN</b>:\n\nVPN для пользователя @{order_data[2]} (ID: <code>{order_data[1]}</code>) активирован и добавлен в базу данных ✅", parse_mode="HTML")
+        await bot.send_document(order_data[1], moder_file, caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN успешно активирован ✅\n\nПодключитесь к VPN по нашей <code>инструкции</code>, с которой можно ознакомиться нажав на кнопку снизу.\n\n<i>Срок действия:</i> <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n\nПродлить VPN можно в любое время через нашего бота.", parse_mode="HTML", reply_markup=finish_buy_vpn)
         await state.finish()
     else:
         attempts = await state.get_data()
@@ -476,11 +476,16 @@ async def find_info_about_users_vpn(message: types.Message, state):
                     user_name = vpn[2]
                     location = vpn[3]
                     active = vpn[4]
-                    expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                    days_remaining = (expiration_date - datetime.datetime.now()).days
-                    name_of_vpn = vpn[6]
-                    vpn_config = vpn[7]
-                    await bot.send_document(message.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                    expiration_date = vpn[5]
+                    if expiration_date is not None:
+                        expiration_date = str(expiration_date)
+                        expiration_date_new = datetime.datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                        days_remaining = (expiration_date_new - datetime.datetime.now()).days
+                        name_of_vpn = vpn[6]
+                        vpn_config = vpn[7]
+                        await bot.send_document(message.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date_new.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                    else:
+                        await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
             else:
                 await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
         except Exception as e:
@@ -497,10 +502,15 @@ async def find_info_about_users_vpn(message: types.Message, state):
                         location = vpn[3]
                         active = vpn[4]
                         expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                        days_remaining = (expiration_date - datetime.datetime.now()).days
-                        name_of_vpn = vpn[6]
-                        vpn_config = vpn[7]
-                        await bot.send_document(message.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        if expiration_date is not None:
+                            expiration_date = str(expiration_date)
+                            expiration_date_new = datetime.datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                            days_remaining = (expiration_date_new - datetime.datetime.now()).days
+                            name_of_vpn = vpn[6]
+                            vpn_config = vpn[7]
+                            await bot.send_document(message.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date_new.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        else:
+                            await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
                 else:
                     await message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
             else:
@@ -605,13 +615,19 @@ async def vpn_info_handle(callback: types.CallbackQuery, state: FSMContext):
                         user_name = vpn[2]
                         location = vpn[3]
                         active = vpn[4]
-                        expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                        days_remaining = (expiration_date - datetime.datetime.now()).days
-                        name_of_vpn = vpn[6]
-                        vpn_config = vpn[7]
-                        await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        expiration_date = vpn[5]
+                        if expiration_date is not None:
+                            expiration_date = str(expiration_date)
+                            expiration_date_new = datetime.datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                            days_remaining = (expiration_date_new - datetime.datetime.now()).days
+                            name_of_vpn = vpn[6]
+                            vpn_config = vpn[7]
+                            await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        else:
+                            await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
                         await callback.answer('')
                         await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
+
                 else:
                     await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
                     await callback.answer('')
@@ -638,11 +654,16 @@ async def vpn_info_handle(callback: types.CallbackQuery, state: FSMContext):
                         user_name = vpn[2]
                         location = vpn[3]
                         active = vpn[4]
-                        expiration_date = datetime.datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                        days_remaining = (expiration_date - datetime.datetime.now()).days
-                        name_of_vpn = vpn[6]
-                        vpn_config = vpn[7]
-                        await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        expiration_date = vpn[5]
+                        if expiration_date is not None:
+                            expiration_date = str(expiration_date)
+                            expiration_date_new = datetime.datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                            days_remaining = (expiration_date_new - datetime.datetime.now()).days
+                            name_of_vpn = vpn[6]
+                            vpn_config = vpn[7]
+                            await bot.send_document(callback.from_user.id, vpn_config, caption=f"• 🛡️ <b>VPN пользователя:</b>\n\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date_new.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n", parse_mode="HTML")
+                        else:
+                            await callback.message.answer("• 🛡️ <b>VPN пользователя:</b>:\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
                         await callback.answer('')
                         await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
                 else:
@@ -703,13 +724,13 @@ async def handle_for_adm_add_sum(message: types.Message, state):
                 await message.answer("• 💵 <b>Пополнение баланса</b>:\n\nВведите корректную сумму (число) ❌", parse_mode="HTML")
         if adm_sum_for_add > 0:
             if user_id_for_add != None:
-                await pay_operation(int(adm_sum_for_add), user_id=user_id_for_add)
+                await add_operation(int(adm_sum_for_add), user_id=user_id_for_add)
                 await bot.send_message(user_id_for_add, f"• 💵 <b>Пополнение баланса</b>:\n\nМодератор пополнил ваш баланс на сумму: {adm_sum_for_add} ₽ ✅", parse_mode="HTML")
             elif user_name_for_add != None:
                 user_info = await find_user_data(user_name=user_name_for_add)
                 for info in user_info:
                     user_id_for_reply = info[1]
-                await pay_operation(int(adm_sum_for_add), user_name=user_name_for_add)
+                await add_operation(int(adm_sum_for_add), user_name=user_name_for_add)
                 await bot.send_message(user_id_for_reply, f"• 💵 <b>Пополнение баланса</b>:\n\nМодератор пополнил ваш баланс на сумму: {adm_sum_for_add} ₽ ✅", parse_mode="HTML")
         else:
             if attempts.get("attempts", 0) >= 3:

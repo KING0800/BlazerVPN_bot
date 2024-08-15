@@ -11,8 +11,8 @@ adm_panel_keyboard.add(
     InlineKeyboardButton(text="🛡️ VPN пользователей", callback_data="vpn_user_callback")
 )
 adm_panel_keyboard.add(
-    InlineKeyboardButton(text="❌ Заблокировать пользователя", callback_data="ban_user_callback"),
-    InlineKeyboardButton(text="✅ Разблокировать пользователя", callback_data="unban_user_callback")
+    InlineKeyboardButton(text="❌ Заблокировать", callback_data="ban_user_callback"),
+    InlineKeyboardButton(text="✅ Разблокировать", callback_data="unban_user_callback")
 )
 adm_panel_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
@@ -21,8 +21,8 @@ adm_panel_keyboard.add(
 # кнопки по управлению определенным пользователем
 user_find_data = InlineKeyboardMarkup()
 user_find_data.add(
-    InlineKeyboardButton(text="❌ Заблокировать пользователя", callback_data="ban_user2_callback"),
-    InlineKeyboardButton(text="✅ Разблокировать пользователя", callback_data="unban_user2_callback")
+    InlineKeyboardButton(text="❌ Заблокировать", callback_data="ban_user2_callback"),
+    InlineKeyboardButton(text="✅ Разблокировать", callback_data="unban_user2_callback")
 )
 user_find_data.add(
     InlineKeyboardButton(text="🛡️ VPN пользователя", callback_data="vpn_user2_callback")
@@ -63,4 +63,10 @@ about_yourself_to_delete_keyboard.add(
 )
 about_yourself_to_delete_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+
+finish_buy_vpn = InlineKeyboardMarkup()
+finish_buy_vpn.add(
+    InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extension_vpn"),
+    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard")
 )
