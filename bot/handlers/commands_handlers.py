@@ -117,14 +117,14 @@ async def handle_text(message: types.Message, state):
                 await save_temp_message(message.from_user.id, message.text, None)
 
         elif message.text == "/connect_with_dev":
-            await message.answer("• 🧑‍💻 <b>Связь с разработчиком</b>:\n\nДля связи с разработчиком бота перейдите по ссылке: \n\nhttps://t.me/KING_08001", reply_markup=help_kb, parse_mode="HTML")
+            await message.answer("• 🧑‍💻 <b>Связь с разработчиком</b>:\n\nДля связи с разработчиком бота перейдите по <b><a href = 'https://t.me/KING_08001'>ссылке</a></b>", reply_markup=help_kb, parse_mode="HTML")
             if message.reply_markup:
                 await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
             else:
                 await save_temp_message(message.from_user.id, message.text, None)
 
         elif message.text == "/buy":
-            await message.answer("• 📍 <b>Выбор локации</b>:\n\nВыберите подходящую для вас локацию:\n\n<tg-spoiler><i>В скором времени будут добавлены дополнительные локации</i></tg-spoiler>", reply_markup=location_keyboard, parse_mode="HTML")
+            await message.answer("• 📍 <b>Выберите желаемую локацию:</b>", reply_markup=location_keyboard, parse_mode="HTML")
             if message.reply_markup:
                 await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
             else:
@@ -136,18 +136,25 @@ async def handle_text(message: types.Message, state):
             if vpn_data:
                 numbers = 0
                 vpn_info_text = ""
+                expiration_date = ""
                 for vpn in vpn_data:
                     numbers += 1
                     location = vpn[3]
                     active = vpn[4]
-                    expiration_date = datetime.datetime.strptime(str(vpn[5]), "%d.%m.%Y %H:%M:%S")
-                    days_remaining = (expiration_date - datetime.datetime.now()).days
-                    vpn_info_text += f"{numbers}. 📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
+                    expiration_date = vpn[5]
+                    if expiration_date is not None:
+                        expiration_date = str(expiration_date)
+                        expiration_date_new = datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                        days_remaining = (expiration_date_new - datetime.now()).days
+                        vpn_info_text += f"{numbers}. 📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date_new.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
+                    else:
+                        vpn_info_text += f"{numbers}. У вас имеется приобретенный VPN 🛡, который еще не обработан модераторами.\nОжидайте ответа модерации.\n\n"
+                        numbers -= 1
                 kb_for_count = addind_count_for_extend(count=numbers)
                 if numbers == 1:
-                    await message.answer(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}\n\n<b>Продление VPN на 30 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵\nНажмите на кнопку, если готовы продлить VPN </b>🛡", reply_markup=extend_keyboard, parse_mode="HTML")
+                    await message.answer(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵\nНажмите на кнопку, если готовы продлить VPN </b>🛡", reply_markup=extend_keyboard, parse_mode="HTML")
                 else:
-                    await message.answer(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}\n\n<b>Продление VPN на 30 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵. \nВыберите VPN </b>🛡<b>, который хотите продлить:</b>", reply_markup=kb_for_count, parse_mode="HTML") 
+                    await message.answer(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵. \nВыберите VPN </b>🛡<b>, который хотите продлить:</b>", reply_markup=kb_for_count, parse_mode="HTML") 
                 if message.reply_markup:
                     await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
                 else:
@@ -225,12 +232,21 @@ async def handle_text(message: types.Message, state):
             vpn_data = await get_vpn_data(user_id)
             if vpn_data:
                 vpn_info_text = "• 🛡 <b>Ваши VPN</b>:\n\n"
+                numbers = 0
                 for vpn in vpn_data:
+                    numbers += 1
                     location = vpn[3]
                     active = vpn[4]
-                    expiration_date = datetime.strptime(vpn[5], "%d.%m.%Y %H:%M:%S")
-                    days_remaining = (expiration_date - datetime.now()).days
-                    vpn_info_text += f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
+                    expiration_date = vpn[5]
+                    if expiration_date is not None:
+                        expiration_date = str(expiration_date)
+                        expiration_date_new = datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
+                        days_remaining = (expiration_date_new - datetime.now()).days
+                        vpn_info_text += f"{numbers}. 📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date_new.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n\n"
+                    else:
+                        vpn_info_text += f"{numbers}. У вас имеется приобретенный VPN 🛡, который еще не обработан модераторами.\nОжидайте ответа модерации.\n\n"
+                        numbers -= 1
+
                 await message.answer(vpn_info_text, reply_markup=buy_keyboard, parse_mode="HTML")
                 if message.reply_markup:
                     await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())

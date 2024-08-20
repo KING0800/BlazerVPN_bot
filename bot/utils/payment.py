@@ -27,7 +27,7 @@ def create_payment(amount):
 def check(payment_id):
     history = client.operation_history(label=payment_id).operations
     print(history)
-    if history != None:
+    if history != []:
         for operation in history:
             if operation.status == 'success':
                 return True

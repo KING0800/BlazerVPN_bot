@@ -193,3 +193,4 @@ help_kb.add(
     InlineKeyboardButton(text="🧑‍💻 Разработчик", url="https://t.me/KING_08001"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
 )
+

@@ -18,7 +18,7 @@ from bot.database.UserData import edit_profile, get_balance, buy_operation, add_
 from bot.database.VpnData import save_order_id, extend_vpn_state, get_vpn_data
 from bot.database.SupportData import edit_data, getting_question
 
-from bot.keyboards.user_keyboards import start_kb_handle, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, support_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, payment_type, promocode_keyboard, device_keyboard
+from bot.keyboards.user_keyboards import start_kb_handle, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, support_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, promocode_keyboard, device_keyboard
 from bot.keyboards.adm_keyboards import reply_keyboard, reply_buy_keyboard
 
 from bot.utils.payment import check, create_payment
@@ -108,12 +108,12 @@ async def start_cmd(message: types.Message):
                 await edit_profile(user_name, user_id, referrer_id)
                 await message.answer("• 🤝 <b>Реферальная система</b>:\n\nСпасибо за регистрацию! Бонусы успешно зачислились рефереру на баланс.\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML", reply_markup=ref_system_keyboard)
                 try:
-                    await bot.send_message(referrer_id, "• 🤝 <b>Реферальная система</b>:\n\nПо вашей реферальной ссылке зарегистровался новый пользователь.\nВам начислены: <code>15</code>₽ ", reply_markup=find_balance_keyboard, parse_mode="HTML")
-                    await add_operation(int(15), referrer_id)
+                    await bot.send_message(referrer_id, "• 🤝 <b>Реферальная система</b>:\n\nПо вашей реферальной ссылке зарегистровался новый пользователь.\nВам начислены: <code>20</code>₽ ", reply_markup=find_balance_keyboard, parse_mode="HTML")
+                    await add_operation(int(20), referrer_id)
                     result = await find_user_data(user_id=referrer_id)
                     for items in result:
                         user_name = items[2]
-                    await edit_operations_history(user_id=referrer_id, user_name=user_name, operations=(+int(15)), description_of_operation="🤝 Реферальная система")
+                    await edit_operations_history(user_id=referrer_id, user_name=user_name, operations=(+int(20)), description_of_operation="🤝 Реферальная система")
                 except:
                     pass
             else:
@@ -197,7 +197,7 @@ async def buying_VPN_def(callback, country,  state):
         await callback.message.edit_text("• 💵 <b>Баланс</b>:\n\nЧтобы пополнить свой баланс 💵 нажмите на кнопку, либо используйте команду - /replenishment", reply_markup=replenishment_balance, parse_mode="HTML")
         await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
     else:
-        await buy_operation(user_id=user_id, user_name=user_name)
+        await buy_operation(user_id=user_id, user_name=user_name, price=VPN_PRICE_TOKEN)
         await callback.message.edit_text("• 🛒 <b>Покупка VPN</b>:\n\nТовар успешно был приобретён ✅\n\nОжидайте подготовки товара модераторами, обычно это занимает не более <code>30</code>-ти минут.\nПожалуйста, ознакомьтесь с инструкцией по подключению к нашим сервисам VPN\n\nКлюч активации VPN будет отправлен в этом чате.", parse_mode="HTML", reply_markup=insturtion_keyboard)
         user_id = callback.from_user.id
         order_id = await save_order_id(user_id=user_id, user_name=user_name, location=country)
@@ -318,7 +318,10 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                 if numbers == 1:
                     await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵\nНажмите на кнопку, если готовы продлить VPN </b>🛡", reply_markup=extend_keyboard, parse_mode="HTML")
                 else:
-                    await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵. \nВыберите VPN </b>🛡<b>, который хотите продлить:</b>", reply_markup=kb_for_count, parse_mode="HTML") 
+                    if callback.message.text:
+                        await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵. \nВыберите VPN </b>🛡<b>, который хотите продлить:</b>", reply_markup=kb_for_count, parse_mode="HTML") 
+                    else:
+                        await callback.message.answer(f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Продление VPN на 28 дней стоит <code>{VPN_PRICE_TOKEN}</code> ₽ 💵. \nВыберите VPN </b>🛡<b>, который хотите продлить:</b>", reply_markup=kb_for_count, parse_mode="HTML") 
                 await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
             else: 
                 await callback.message.edit_text("• 🛡 <b>Продление VPN:</b>\n\nУ вас нету действующего VPN ❌! \n\n<i>Вам его необходимо приобрести, нажав на кнопку ниже, либо использовав команду -</i> /buy", reply_markup=buy_keyboard, parse_mode="HTML")
@@ -343,10 +346,12 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                         expiration_date_new = datetime.datetime.strptime(expiration_date, "%d.%m.%Y %H:%M:%S")
                         name_of_vpn = vpn[6]
                         vpn_config = vpn[7]
-                        days_remaining = (expiration_date - datetime.datetime.now()).days
+
+                        days_remaining = (expiration_date_new - datetime.datetime.now()).days
                 new_expiration_date = expiration_date_new + datetime.timedelta(days=28)
                 await extend_vpn_state(user_id=user_id, location=location, active=True, expiration_date=new_expiration_date, id=id)    
-                await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\nVPN продлен на <code>28</code>  дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 28}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
+                if callback.message.text is not None:
+                    await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\nVPN продлен на <code>28</code>  дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 28}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
                 vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining + 28}</code> дней\n\n"
                 await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
@@ -534,7 +539,7 @@ async def ref_system(callback: types.CallbackQuery):
             referrals = referrals.split("\n")
         else:
             referrals = referrals
-        text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить 5 ₽ себе на баланс.</i>\n\n"
+        text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить <code>20</code> ₽ себе на баланс.</i>\n\n"
         if referrals:
             text += "<b>Ваши рефералы:</b>\n"
             for username in referrals:
@@ -600,7 +605,7 @@ async def handle_user_promo(message: types.Message, state):
 """******************************** ОБРАБОТКА ИНФОРМАЦИИ О СОБСТВЕННОМ VPN ПОЛЬЗОВАТЕЛЕЙ *******************************"""
 
 # обработка информации о личных VPN пользователей
-async def myvpn_handle(callback: types.CallbackQuery):
+async def my_vpn_handle(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if await is_user_ban_check(user_id=user_id):
         await callback.message.answer("• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
@@ -653,7 +658,6 @@ async def history_of_opeartions_handle(callback: types.CallbackQuery):
         message_text = "• 📋 <b>История операций</b>:\n\n"
         for operation in operation_history:
             id, user_db_id, user_db_name, operations, time_of_operation, description_of_operation = operation
-
             operations = operations.split(",")
             time_of_operation = time_of_operation.split(",")
             description_of_operation = description_of_operation.split(",")
@@ -705,6 +709,8 @@ async def back_handle(callback: types.CallbackQuery, state):
             await callback.message.answer(start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
     await callback.answer("")
 
+
+
 """**************************************************** СИСТЕМА РЕГИСТРИРОВАНИЯ ВСЕХ ХЕНДЛЕРОВ *****************************************************"""
 
 def register_user_handlers(dp: Dispatcher) -> None:
@@ -726,6 +732,6 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(ref_system, lambda c: c.data == "ref_system_callback", state="*")
     dp.register_callback_query_handler(promo_handle, lambda c: c.data == "promo_callback", state="*")
     dp.register_message_handler(handle_user_promo, state=PromocodeStates.WAITING_FOR_USER_PROMOCODE)
-    dp.register_callback_query_handler(myvpn_handle, lambda c: c.data == "myvpn_callback", state="*")
+    dp.register_callback_query_handler(my_vpn_handle, lambda c: c.data == "myvpn_callback", state="*")
     dp.register_callback_query_handler(history_of_opeartions_handle, lambda c: c.data == "history_of_operations_callback", state="*")
     dp.register_callback_query_handler(back_handle, lambda c: c.data == "back", state="*")

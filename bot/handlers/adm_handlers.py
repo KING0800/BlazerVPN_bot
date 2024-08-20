@@ -1,5 +1,6 @@
 import os
 import datetime
+import asyncio
 
 from dotenv import load_dotenv
 from typing import NamedTuple
@@ -13,11 +14,11 @@ from aiogram.utils.exceptions import ChatNotFound
 from bot.database.OperationsData import edit_operations_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
 from bot.database.UserData import get_balance, add_operation, pay_operation, get_referrer_username, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
-from bot.database.VpnData import update_vpn_state, get_order_id, get_vpn_data
+from bot.database.VpnData import update_vpn_state, get_order_id, get_vpn_data, check_vpn_expiration_for_days, check_expired_vpns
 from bot.database.SupportData import getting_question, deleting_answered_reports
 
 from bot.keyboards.user_keyboards import support_keyboard, back_keyboard
-from bot.keyboards.adm_keyboards import adm_panel_keyboard, user_find_data, about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard, finish_buy_vpn
+from bot.keyboards.adm_keyboards import adm_panel_keyboard, buy_info_keyboard, user_find_data, about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard, finish_buy_vpn, extension_keyboard
 
 load_dotenv('.env')
 
@@ -841,6 +842,46 @@ async def handle_for_adm_delete_sum(message: types.Message, state):
                 await state.update_data(attempts=attempts.get("attempts", 0) + 1)
                 await message.answer("• 💵 <b>Удаление баланса</b>:\n\nСумма для пополнения должна быть больше нуля ❌\n\n<i>Попробуйте ввести сумму заново:</i>", parse_mode="HTML")
 
+async def notification_moders_for_vpns_soon(days: int):
+    while True:
+        information_about_vpns = await check_vpn_expiration_for_days(days=days)
+        if information_about_vpns != []:
+            for info in information_about_vpns:
+                user_id = info[0]
+                user_name = info[1]
+                expiration_date = info[2]
+                file = info[3]
+                
+                notification_sent = await check_notification_sent(user_id, user_name, expiration_date)
+                if not notification_sent:
+                    await bot.send_document(document=file, chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> осталось меньше <code>{days}</code> дней до окончания.", parse_mode="HTML")
+                    await bot.send_document(document=file, chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> осталось меньше <code>{days}</code> дней до окончания.", parse_mode="HTML")
+                    await bot.send_document(document=file, chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nДо окончания срока действия вашего VPN осталось <code>{days}</code> дней. \nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы продлить свой VPN, используйте кнопку ниже, либо используйте команду -</i> /extend_vpn", parse_mode="HTML", reply_markup=extension_keyboard)
+                    
+                    await mark_notification_sent(user_id, user_name, expiration_date)
+        await asyncio.sleep(1800)
+
+notification_status = {}
+
+async def check_notification_sent(user_id, user_name, expiration_date):
+    return notification_status.get((user_id, user_name, expiration_date), False)
+
+async def mark_notification_sent(user_id, user_name, expiration_date):
+    notification_status[(user_id, user_name, expiration_date)] = True
+
+async def notification_moders_for_vpns_end():
+    while True:
+        information_about_vpns = await check_expired_vpns()
+        if information_about_vpns != []:
+            for info in information_about_vpns:
+                user_id = info[0]
+                user_name = info[1]
+                expiration_date = info[2]
+                file = info[3]
+                await bot.send_document(document=file, chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> был удален c связи с окончанием срока действия. ✅", parse_mode="HTML")
+                await bot.send_document(document=file, chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> был удален c связи с окончанием срока действия. ✅", parse_mode="HTML")
+                await bot.send_document(document=file, chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nВаш VPN был успешно удален ✅\nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы купить VPN, используйте кнопку ниже, либо используйте команду -</i> /buy", parse_mode="HTML", reply_markup=buy_info_keyboard)
+        await asyncio.sleep(60)
 
 def register_adm_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(send_message, lambda c: "reply_buy_keyboard" in c.data)

@@ -8,9 +8,10 @@ from aiogram.dispatcher.handler import CancelHandler, current_handler
 last_message_times = {}
 
 class AntiFloodMiddleware(BaseMiddleware):
-    def __init__(self, limit: int):
+    def __init__(self, limit: int, cooldown: int):
         BaseMiddleware.__init__(self)
         self.rate_limit = limit
+        self.cooldown = cooldown
 
     async def on_process_message(self, message: types.Message, data: dict):
         handler = current_handler.get()
@@ -19,12 +20,12 @@ class AntiFloodMiddleware(BaseMiddleware):
         try:
             await dp.throttle(key='antiflood_message', rate=self.rate_limit)
         except Throttled as _t:
-            await self.msg_throttle(message=message, throttled=_t)
-
-            raise CancelHandler()
-        
+            if _t.exceeded_count >= self.rate_limit:
+                await self.msg_throttle(message=message, throttled=_t)
+                await asyncio.sleep(self.cooldown)
+                raise CancelHandler()
+            
     async def msg_throttle(self, message: types.Message, throttled: Throttled):
         delta = throttled.rate - throttled.delta
-        if throttled.exceeded_count <= 2:
-            await message.answer(f"• ❌ <b>Ошибка:</b>\n\nПожалуйста, подождите <code>{round(delta)}</code> секунд перед отправкой следующего сообщения.", parse_mode="HTML")
+        await message.answer(f"• ❌ <b>Ошибка:</b>\n\nСлишком много сообщений. Пожалуйста, подождите <code>{round(delta)}</code> секунд.", parse_mode="HTML")
         await asyncio.sleep(delta)
