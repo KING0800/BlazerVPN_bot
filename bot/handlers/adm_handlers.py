@@ -13,7 +13,7 @@ from aiogram.utils.exceptions import ChatNotFound
 
 from bot.database.OperationsData import edit_operations_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
-from bot.database.UserData import get_balance, add_operation, pay_operation, get_referrer_username, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
+from bot.database.UserData import get_balance, add_operation, pay_operation, get_referrer_info, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
 from bot.database.VpnData import update_vpn_state, get_order_id, get_vpn_data, check_vpn_expiration_for_days, check_expired_vpns
 from bot.database.SupportData import getting_question, deleting_answered_reports
 
@@ -568,8 +568,13 @@ async def find_user_info_for_adm_panel(message: types.Message, state: FSMContext
                 referrer_id = "-"
                 user_info_text = f"• 🗃 <b>Данные о пользователе</b>:\n\nID в базе данных: <code>{id}</code>\nTelegram ID: <code>{user_id}</code>\nUsername пользователя: <code>{user_name}</code>\nБаланс: <code>{balance}</code> ₽\nВремя регистрации: <code>{time_of_registration}</code>\nРеферер: <code>-</code>\nИспользованные промокоды: <code>{used_promocodes_text}</code>\nЗабанен ли пользователь: <code>{is_banned}</code>"
             else:
-                referrer_username = await get_referrer_username(user_id=referrer_id)
-                user_info_text = f"• 🗃 <b>Данные о пользователе</b>:\n\nID в базе данных: <code>{id}</code>\nTelegram ID: <code>{user_id}</code>\nUsername пользователя: <code>{user_name}</code>\nБаланс: <code>{balance}</code> ₽\nВремя регистрации: <code>{time_of_registration}</code>\nРеферер: {referrer_username}({referrer_id})\nИспользованные промокоды: <code>{used_promocodes_text}</code>\nЗабанен ли пользователь: <code>{is_banned}</code>"
+                referrer_username = await get_referrer_info(user_id=referrer_id)
+                for user_ref_name, user_ref_id in referrer_username:
+                    if user_ref_name == None:
+                        user_ref_name = "Пользователь без <b>USERNAME</b>"
+                    else:
+                        user_ref_name = "@" + user_ref_name
+                    user_info_text = f"• 🗃 <b>Данные о пользователе</b>:\n\nID в базе данных: <code>{id}</code>\nTelegram ID: <code>{user_id}</code>\nUsername пользователя: <code>{user_name}</code>\nБаланс: <code>{balance}</code> ₽\nВремя регистрации: <code>{time_of_registration}</code>\nРеферер: {user_ref_name} (ID: <code>{user_ref_id}</code>)\nИспользованные промокоды: <code>{used_promocodes_text}</code>\nЗабанен ли пользователь: <code>{is_banned}</code>"
             await message.answer(user_info_text, reply_markup=user_find_data, parse_mode="HTML")
             if message.reply_markup:
                 await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())

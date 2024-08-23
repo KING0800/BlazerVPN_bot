@@ -8,7 +8,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from bot.handlers.user_handlers import register_user_handlers
 from bot.handlers.adm_handlers import register_adm_handlers, notification_moders_for_vpns_soon, notification_moders_for_vpns_end
-from bot.handlers.commands_handlers import register_command_handlers
+from bot.handlers.cmd_handlers import register_command_handlers
 
 from bot.database.OperationsData import OperationsData_db_start
 from bot.database.TempData import TempData_db_start

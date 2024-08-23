@@ -9,7 +9,7 @@ from datetime import datetime
 from bot.keyboards.user_keyboards import help_kb, balance_handle_keyboard, start_kb_handle, device_keyboard, replenishment_balance, back_keyboard, support_keyboard, location_keyboard, buy_keyboard, addind_count_for_extend, extend_keyboard, numbers_for_replenishment
 from bot.keyboards.adm_keyboards import about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard
 
-from bot.database.UserData import is_user_ban_check, get_balance, get_referrer_username
+from bot.database.UserData import is_user_ban_check, get_balance, get_referrer_info
 from bot.database.VpnData import get_vpn_data
 from bot.database.TempData import save_temp_message
 from bot.database.OperationsData import getting_operation_history
@@ -195,16 +195,16 @@ async def handle_text(message: types.Message, state):
                 await SupportStates.WAITING_FOR_QUESTION.set()
 
         elif message.text == "/ref_system":
-            referrals = await get_referrer_username(user_id)
-            if referrals != None:
-                referrals = referrals.split("\n")
-            else:
-                referrals = referrals
-            text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить 5 ₽ себе на баланс.</i>\n\n"
+            referrals = await get_referrer_info(user_id)
             if referrals:
-                text += "<b>Ваши рефералы:</b>\n"
-                for username in referrals:
-                    text += f"@{username} \n" 
+                text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить <code>20</code> ₽ себе на баланс.</i>\n\n"
+                
+                text += "<b>Ваши рефералы:</b>\n\n"
+                for referer_id, referer_name in referrals:
+                    if referer_name: 
+                        text += f"@{referer_name} (ID: <code>{referer_id}</code>) \n"
+                    else:
+                        text += f"Пользователь без USERNAME (ID: <code>{referer_id}</code>)\n"
             else:
                 text += "У вас еще нет рефералов."
             await message.answer(text, reply_markup=back_keyboard, parse_mode="HTML")

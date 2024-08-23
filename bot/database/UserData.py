@@ -62,7 +62,7 @@ async def get_balance(user_name=None, user_id=None):
             if row is not None:
                 return row[0]
             else:
-                return None
+                return int(0)
         elif user_id != None:
             cur.execute(
                 "SELECT balance FROM UserINFO WHERE user_id = ?",
@@ -72,7 +72,7 @@ async def get_balance(user_name=None, user_id=None):
             if row is not None:
                 return row[0]
             else:
-                return None
+                return int(0)
     
 # операция по покупке (снятие денег)
 async def buy_operation(user_id, user_name, price):
@@ -127,13 +127,13 @@ async def add_operation(price, user_id=None, user_name=None):
 
 
 # нахождение рефералов по user_id
-async def get_referrer_username(user_id):
+async def get_referrer_info(user_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT user_name FROM UserINFO WHERE referrer_id = ?", (user_id,))
-        result = cur.fetchone()
-        if result:
-            return result[0]
+        cur.execute("SELECT user_id, user_name FROM UserINFO WHERE referrer_id = ?", (user_id,))
+        refferers_info = cur.fetchall()
+        if refferers_info:
+            return refferers_info
         else:
             return None
         
@@ -141,8 +141,7 @@ async def get_referrer_username(user_id):
 async def check_promocode_used(user_id, promocode):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT used_promocodes FROM UserINFO WHERE user_id = ?", (user_id,))
-        result = cur.fetchone()
+        result = cur.execute("SELECT used_promocodes FROM UserINFO WHERE user_id = ?", (user_id,)).fetchone()
         if result:
             used_promocodes = result[0]
             if used_promocodes is not None and promocode in used_promocodes.split(','):

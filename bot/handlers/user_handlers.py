@@ -14,7 +14,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 from bot.database.OperationsData import edit_operations_history, getting_operation_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
-from bot.database.UserData import edit_profile, get_balance, buy_operation, add_operation, pay_operation, get_referrer_username, check_promocode_used, save_promocode, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check
+from bot.database.UserData import edit_profile, get_balance, buy_operation, add_operation, pay_operation, get_referrer_info, check_promocode_used, save_promocode, find_user_data, is_user_ban_check
 from bot.database.VpnData import save_order_id, extend_vpn_state, get_vpn_data
 from bot.database.SupportData import edit_data, getting_question
 
@@ -202,8 +202,12 @@ async def buying_VPN_def(callback, country,  state):
         user_id = callback.from_user.id
         order_id = await save_order_id(user_id=user_id, user_name=user_name, location=country)
         await edit_operations_history(user_id=user_id, user_name=user_name, operations=(-(float(VPN_PRICE_TOKEN))), description_of_operation="🛒 Покупка VPN")
-        await bot.send_message(BLAZER_CHAT_TOKEN, f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-        await bot.send_message(ANUSH_CHAT_TOKEN, f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        if user_name != None:
+            await bot.send_message(BLAZER_CHAT_TOKEN, f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+            await bot.send_message(ANUSH_CHAT_TOKEN, f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        else:
+            await bot.send_message(ANUSH_CHAT_TOKEN, f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+            await bot.send_message(BLAZER_CHAT_TOKEN, f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nЗаказал VPN на локации: {country}\nПредоставьте конфиг с ключом активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
         await save_temp_message(callback.from_user.id, callback.message.text, callback.message.reply_markup.as_json())
 
 # хендлер, который вызывает функцию, для обработки покупки VPN. Обрабатывает кнопки (Buying_sweden_VPN, Buying_finland_VPN, Buying_germany_VPN)
@@ -353,8 +357,13 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                 if callback.message.text is not None:
                     await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>\n\nVPN продлен на <code>28</code>  дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 28}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
                 vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining + 28}</code> дней\n\n"
-                await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                if user_name != None:
+                    await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                    await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                else:
+                    await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                    await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+
                 await save_temp_message(callback.from_user.id, callback.message.text, None)
             else:
                 await callback.answer("У вас недостаточно средств ❌")
@@ -381,8 +390,12 @@ async def extend_vpn_handle(callback: types.CallbackQuery, state: FSMContext):
                 vpn_info_text = f"📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n⏳ Осталось:   <code>{days_remaining + 28}</code> дней\n\n"
                 await extend_vpn_state(user_id=user_id, location=location, active=True, expiration_date=new_expiration_date, id=id)
                 await callback.message.edit_text(f"• 🛡 <b>Продление VPN:</b>:\n\nVPN продлен на <code>28</code> дней ✅ \n\nДо окончания действия VPN осталось <code>{days_remaining + 28}</code> дней ⏳", reply_markup=back_keyboard, parse_mode="HTML")
-                await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                if user_name != None:
+                    await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                    await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                else:
+                    await bot.send_document(ANUSH_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
+                    await bot.send_document(BLAZER_CHAT_TOKEN, vpn_config, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nПродлил VPN 🛡 на 28 дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await save_temp_message(callback.from_user.id, callback.message.text, None)
             else:
                 await callback.answer("У вас недостаточно средств ❌")
@@ -517,8 +530,12 @@ async def process_question(message: types.Message,  state: FSMContext):
     question = message.text
     await edit_data(user_name=user_name, user_id=user_id, question=question)
     await message.answer("• 🆘 <b>Система поддержки</b>:\n\nВопрос отправлен модератору! Ожидайте ответ в этом чате.", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
-    await bot.send_message(BLAZER_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
-    await bot.send_message(ANUSH_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
+    if user_name != None:
+        await bot.send_message(BLAZER_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
+        await bot.send_message(ANUSH_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь @{user_name} (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
+    else:
+        await bot.send_message(BLAZER_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
+        await bot.send_message(ANUSH_CHAT_TOKEN, f"• 🆘 <b>Система поддержки</b>:\n\nПользователь без <b>USERNAME</b> (ID: <code>{user_id})</code>\nЗадал вопрос:\n\n<b>{question}</b>", reply_markup=reply_keyboard(user_id), parse_mode="HTML")
     if message.reply_markup:
         await save_temp_message(message.from_user.id, message.text, message.reply_markup.as_json())
     else:
@@ -534,16 +551,16 @@ async def ref_system(callback: types.CallbackQuery):
         await callback.message.answer("• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
         return
     else:
-        referrals = await get_referrer_username(user_id)
-        if referrals != None:
-            referrals = referrals.split("\n")
-        else:
-            referrals = referrals
-        text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить <code>20</code> ₽ себе на баланс.</i>\n\n"
+        referrals = await get_referrer_info(user_id)
         if referrals:
-            text += "<b>Ваши рефералы:</b>\n"
-            for username in referrals:
-                text += f"@{username} \n" 
+            text = f"• 🤝 <b>Реферальная система</b>:\n<pre>https://t.me/blazervpnbot?start={user_id}</pre>\n\n<i>Поделитесь этой ссылкой со своими знакомыми, чтобы получить <code>20</code> ₽ себе на баланс.</i>\n\n"
+            
+            text += "<b>Ваши рефералы:</b>\n\n"
+            for referer_id, referer_name in referrals:
+                if referer_name: 
+                    text += f"@{referer_name} (ID: <code>{referer_id}</code>) \n"
+                else:
+                    text += f"Пользователь без USERNAME (ID: <code>{referer_id}</code>)\n"
         else:
             text += "У вас еще нет рефералов."
         await callback.message.edit_text(text, reply_markup=back_keyboard, parse_mode="HTML")
@@ -576,7 +593,7 @@ async def handle_user_promo(message: types.Message, state):
         await state.finish()
         return
     else:
-        check_used_promo = await check_promocode_used(user_id, PROMOCODE_TOKEN)
+        check_used_promo = await check_promocode_used(user_id, user_promo)
         if user_promo in PROMOCODE_TOKEN and check_used_promo == False:
             await message.answer("• 🎟 <b>Система промокодов</b>:\n\nВы ввели правильный промокод ✅\n\nНа ваш баланс зачислено: <code>20</code> рублей 💵!", reply_markup=back_keyboard, parse_mode="HTML")
             await add_operation(20, user_id)
