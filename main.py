@@ -17,6 +17,7 @@ from bot.database.VpnData import VpnData_db_start
 from bot.database.SupportData import SupportData_db_start
 
 from bot.middlewares.anti_flood_middleware import AntiFloodMiddleware
+from bot.middlewares.save_temp_messages import MessageSaverMiddleware
 
 
 def register_handler(dp: Dispatcher) -> None:
@@ -28,10 +29,9 @@ token = os.getenv("BOT_TOKEN")
 bot = Bot(token)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
-anti_flood_middleware = AntiFloodMiddleware(limit=5, cooldown=5)
-
 async def main(dp: Dispatcher) -> None:
-    dp.middleware.setup(anti_flood_middleware)
+    dp.middleware.setup(AntiFloodMiddleware(limit=5, cooldown=5))
+    dp.middleware.setup(MessageSaverMiddleware())
 
     load_dotenv('.env')
 
@@ -49,6 +49,7 @@ async def main(dp: Dispatcher) -> None:
     asyncio.create_task(notification_moders_for_vpns_end())
 
     register_handler(dp=dp)
+
     
 if __name__ == "__main__":
-    executor.start_polling(dispatcher=dp, skip_updates=True, on_startup=main)
+    executor.start_polling(dp, on_startup=main, skip_updates=True)

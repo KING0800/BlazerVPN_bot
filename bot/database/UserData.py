@@ -3,10 +3,6 @@ import uuid
 import os 
 
 from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv('.env')
-VPN_PRICE_TOKEN = os.getenv("VPN_PRICE_TOKEN") 
 
 # Создание таблицы UserInfo
 async def UserInfo_db_start():
@@ -76,23 +72,19 @@ async def get_balance(user_name=None, user_id=None):
     
 # операция по покупке (снятие денег)
 async def buy_operation(user_id, user_name, price):
-    balance = await get_balance(user_name=user_name)
-    if int(balance) >= float(VPN_PRICE_TOKEN):
-        with sq.connect('database.db') as db:
-            cur = db.cursor()
-            payment_key = str(uuid.uuid4())
-            cur.execute(
-                "INSERT INTO TempData (user_id, payment_key) VALUES (?, ?)",
-                (user_id, payment_key)
-            )
-            cur.execute(
-                "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
-                (price, user_name,)
-            )
-            db.commit()
-            return payment_key
-    else:
-        raise ValueError("Insufficient funds")
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        payment_key = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO TempData (user_id, payment_key) VALUES (?, ?)",
+            (user_id, payment_key)
+        )
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
+            (price, user_name,)
+        )
+        db.commit()
+        return payment_key
     
 # операция по пополнению баланса
 async def pay_operation(price, user_id=None, user_name=None):

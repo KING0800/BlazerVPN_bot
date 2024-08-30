@@ -7,6 +7,7 @@ load_dotenv('.env')
 
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN") 
 ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
+HELPER_CHAT_TOKEN = os.getenv("HELPER_CHAT_TOKEN")
 
 # стартовая клавиатура, чтобы управлять вообще ботом
 def start_kb_handle(user_id) -> InlineKeyboardMarkup:
@@ -32,7 +33,7 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
     start_keyboard.add(
         InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback")
     )
-    if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN):
+    if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN) or int(user_id) == int(HELPER_CHAT_TOKEN):
         start_keyboard.add(
             InlineKeyboardButton(text="🤖 Панель администратора", callback_data="adm_panel_callback")
         )
@@ -49,9 +50,15 @@ support_keyboard.add(
 # клавиатура для выбора локаций при покупки VPN
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
-        InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback"),    
-        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+        # InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback"),   
+        # InlineKeyboardButton(text="🇩🇪 Германия", callback_data="Germany_callback"),
+        InlineKeyboardButton(text="🇸🇪 Швеция", callback_data="Sweden_callback"),
+        InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="Netherlands_callback"),
+)        
+location_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
+
 
 # обработка покупки VPN на локации Швеция
 pay_sweden_keyboard = InlineKeyboardMarkup()
@@ -71,6 +78,12 @@ pay_finland_keyboard.add(
 pay_germany_keyboard = InlineKeyboardMarkup()
 pay_germany_keyboard.add(
     InlineKeyboardButton(text="🛒 Купить", callback_data="Buying_germany_VPN"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+
+pay_netherlands_keyboard = InlineKeyboardMarkup()
+pay_netherlands_keyboard.add(
+    InlineKeyboardButton(text="🛒 Купить", callback_data="Buying_netherlands_VPN"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -110,9 +123,9 @@ extend_keyboard.add(
 # клавиатура для выбора суммы пополнения
 numbers_for_replenishment = InlineKeyboardMarkup()
 numbers_for_replenishment.add(
+    InlineKeyboardButton(text="💵 100", callback_data="100_for_replenishment_callback"),
     InlineKeyboardButton(text="💵 200", callback_data="200_for_replenishment_callback"),
-    InlineKeyboardButton(text="💵 500", callback_data="500_for_replenishment_callback"),
-    InlineKeyboardButton(text="💵 1000", callback_data="1000_for_replenishment_callback")
+    InlineKeyboardButton(text="💵 500", callback_data="500_for_replenishment_callback")
 )
 numbers_for_replenishment.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
@@ -156,12 +169,12 @@ promocode_keyboard.add(
 # клавиатура по выбору девайса, по которому человек хочет получить инструкцию
 device_keyboard = InlineKeyboardMarkup()
 device_keyboard.add(
-    InlineKeyboardButton(text="📱 Android", callback_data="Android_device_callback"),
-    InlineKeyboardButton(text="🍏 iOS", callback_data="IOS_device_callback")
+    InlineKeyboardButton(text="📱 Android", url="https://telegra.ph/Nastrojka-dlya-Android-08-28"),
+    InlineKeyboardButton(text="🍏 iOS", url="https://telegra.ph/Nastrojka-dlya-IOS-08-28")
 )
 device_keyboard.add(
-    InlineKeyboardButton(text="🖥  Windows", callback_data="komp_device_callback"),
-    InlineKeyboardButton(text="🍏 MacOS", callback_data="MacOS_callback")
+    InlineKeyboardButton(text="🖥  Windows", url="https://telegra.ph/Nastrojka-dlya-Windows-08-28"),
+    InlineKeyboardButton(text="🍏 MacOS", url="https://telegra.ph/Nastrojka-dlya-MacOS-08-28")
 )
 device_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
@@ -194,3 +207,8 @@ help_kb.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
 )
 
+support_to_moders = InlineKeyboardMarkup()
+support_to_moders.add(
+    InlineKeyboardButton(text="🆘 Модерация", url="https://t.me/blazer_helper"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
