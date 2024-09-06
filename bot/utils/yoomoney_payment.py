@@ -11,7 +11,7 @@ CLIENT_PAYMENT_TOKEN = os.getenv("CLIENT_PAYMENT_TOKEN")
 
 client = Client(CLIENT_PAYMENT_TOKEN)
 
-def create_payment(amount):
+def create_yoomoney_payment(amount):
     label = str(uuid4())
     quickpay = Quickpay(
         receiver=PAYMENT_TOKEN,
@@ -24,7 +24,7 @@ def create_payment(amount):
     )
     return quickpay.redirected_url, label
 
-def check(payment_id):
+def yoomoney_check(payment_id):
     history = client.operation_history(label=payment_id).operations
     print(history)
     if history != []:
@@ -35,4 +35,3 @@ def check(payment_id):
                 return False
     else:
         return False
- 

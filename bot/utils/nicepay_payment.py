@@ -2,7 +2,7 @@ import requests
 from uuid import uuid4
 
 
-def create_payment(amount: int, email: str):
+def create_nicepay_payment(amount: int, email: str):
     order_id = uuid4()
     data = {'merchant_id': '668b36da2ef9b83f7d450caf',
             "secret": 'qVs6q-vOu0P-o78h7-xOrvR-XWf6c', 
@@ -21,13 +21,14 @@ def create_payment(amount: int, email: str):
         print(response.json())
         return None
     
-def check(payment_id):
-    response = requests.get(f"https://t.me/blazervpnbot/payment")
+def nicepay_check(payment_id):
+    response = requests.get(f"https://lk.blazer-host.ru/result/telegram")
+
     if response.status_code == 200:
         print("response code - 200")
         try:
             data = response.json()
-            print(f"Response: {data}") # Debug: Print the parsed JSON
+            print(f"Response: {data}")
             if data['order_id'] == payment_id:
                 if data['result'] == "success":
                     print("result == success")
@@ -43,5 +44,5 @@ def check(payment_id):
             print(response.text)
             return False
     else:
-        print("ошибка в status code")
+        print(f"Error: {response.status_code} - {response.text}")   
         return False

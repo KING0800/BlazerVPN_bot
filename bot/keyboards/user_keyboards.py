@@ -14,7 +14,7 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
     start_keyboard = InlineKeyboardMarkup()
     start_keyboard.add(
                 InlineKeyboardButton(text="🛒 Купить VPN ", callback_data="buy"),
-                InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extension_vpn")
+                InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extend_vpn_info")
     )
     start_keyboard.add(
         InlineKeyboardButton(text="🛡️ Мои VPN", callback_data="myvpn_callback")
@@ -27,11 +27,7 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🆘 Поддержка", callback_data="support_callback")
     )
     start_keyboard.add(
-        InlineKeyboardButton(text="🤝 Рефералка", callback_data="ref_system_callback"),
-        InlineKeyboardButton(text="🎟 Промокоды", callback_data="promo_callback")
-    )
-    start_keyboard.add(
-        InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback")
+        InlineKeyboardButton(text="👤 Профиль", callback_data="profile_callback")
     )
     if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN) or int(user_id) == int(HELPER_CHAT_TOKEN):
         start_keyboard.add(
@@ -53,7 +49,7 @@ location_keyboard.add(
         # InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback"),   
         # InlineKeyboardButton(text="🇩🇪 Германия", callback_data="Germany_callback"),
         InlineKeyboardButton(text="🇸🇪 Швеция", callback_data="Sweden_callback"),
-        InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="Netherlands_callback"),
+        # InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="Netherlands_callback"),
 )        
 location_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
@@ -116,7 +112,7 @@ buy_keyboard.add(
 # клавиатура по продлению VPN
 extend_keyboard = InlineKeyboardMarkup()
 extend_keyboard.add(
-    InlineKeyboardButton(text="💵 Продлить VPN", callback_data="extend_callback"),
+    InlineKeyboardButton(text="💵 Продлить VPN", callback_data="extend_sole_vpn"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -136,28 +132,45 @@ def addind_count_for_extend(count) -> InlineKeyboardMarkup:
     numbers_for_extend = InlineKeyboardMarkup()
     numbers_for_extend.row() 
     for i in range(1, count + 1):
-        numbers_for_extend.insert(InlineKeyboardButton(text=f"{i}.", callback_data=f"extend_vpn_{i}"))
+        numbers_for_extend.insert(InlineKeyboardButton(text=f"{i}.", callback_data=f"extend_some_vpn_{i}"))
     numbers_for_extend.add(
         InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
     )
     return numbers_for_extend
 
+async def final_extend_some_vpn(number) -> InlineKeyboardMarkup:    
+    final_extend_some_vpn = InlineKeyboardMarkup()
+    final_extend_some_vpn.add(
+        InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data=f"final_extend_vpn_{number}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return final_extend_some_vpn
+
 # клавиатура по выбору платежной системы
-payment_type = InlineKeyboardMarkup()
-payment_type.add(
-    InlineKeyboardButton(text="💳 Банковской картой", callback_data="bank_card_payment_callback"),
-    InlineKeyboardButton(text="💳 Кошелек ЮMoney", callback_data="yoomoney_payment_callback")
-)
-payment_type.add(
-    InlineKeyboardButton(text="💳 TinkoffPay", callback_data="TinkoffPay_callback"),
-    InlineKeyboardButton(text="💳 SberPay", callback_data="SberPay_callback")
-)
-payment_type.add(
-    InlineKeyboardButton(text="💳 СБП", callback_data="SBP_callback")
-)
-payment_type.add(
-    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
-)
+async def payment_type_keyboard(price: int) -> InlineKeyboardMarkup:
+    payment_type = InlineKeyboardMarkup()
+    payment_type.add(
+        InlineKeyboardButton(text="💳 YooMoney", callback_data=f"yoomoney_callback_{price}"),
+        # InlineKeyboardButton(text="💳 NicePay", callback_data=f"nicepay_callback_{price}"),
+    )
+    payment_type.add(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return payment_type
+
+async def create_payment_keyboard(payment_id: int, payment_url: str, payment_type: str) -> InlineKeyboardMarkup:
+    payment_button = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Оплатить", url=payment_url),
+                InlineKeyboardButton(text="Проверить оплату", callback_data=f"checking_{payment_type}_payment_{payment_id}")
+            ]
+        ]
+    )
+    payment_button.add(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return payment_button
 
 # клавиатура для системы промокодов
 promocode_keyboard = InlineKeyboardMarkup()
@@ -211,4 +224,30 @@ support_to_moders = InlineKeyboardMarkup()
 support_to_moders.add(
     InlineKeyboardButton(text="🆘 Модерация", url="https://t.me/blazer_helper"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)
+async def vpn_connection_type_keyboard(location) -> InlineKeyboardMarkup:
+    vpn_connection_type_keyboard = InlineKeyboardMarkup()
+    vpn_connection_type_keyboard.add(
+        InlineKeyboardButton(text="🧦 Shadowsocks", callback_data=f"vpn_connection_type_callback.{location}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+    )
+    return vpn_connection_type_keyboard
+
+profile_keyboard = InlineKeyboardMarkup()
+profile_keyboard.add(
+    InlineKeyboardButton(text="🤝 Рефералка", callback_data="ref_system_callback"),
+    InlineKeyboardButton(text="🎟 Промокоды", callback_data="promo_callback")
+)
+profile_keyboard.add(
+    InlineKeyboardButton(text="📋 История операций", callback_data="history_of_operations_callback"),
+    InlineKeyboardButton(text="💵 Пополнить баланс", callback_data="replenishment")
+
+)    
+profile_keyboard.add(
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+)    
+
+check_balance_keyboard = InlineKeyboardMarkup()
+check_balance_keyboard.add(
+    InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance")
 )

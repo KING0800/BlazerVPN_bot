@@ -13,8 +13,8 @@ from aiogram.types import CallbackQuery, Message, InputMediaPhoto
 
 from bot.database.OperationsData import edit_operations_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
-from bot.database.UserData import get_balance, add_operation, pay_operation, get_referrer_info, find_user_data, ban_users_handle, unban_users_handle, is_user_ban_check, delete_sum_operation
-from bot.database.VpnData import update_vpn_state, get_order_id, get_vpn_data, check_vpn_expiration_for_days, check_expired_vpns
+from bot.database.UserData import addind_vpn_count, get_balance, add_operation, pay_operation, get_referrer_info, find_user_data, ban_users_handle, unban_users_handle, delete_sum_operation
+from bot.database.VpnData import get_expiration_date, update_vpn_state, get_order_id, get_vpn_data, check_vpn_expiration_for_days, check_expired_vpns
 from bot.database.SupportData import getting_question, deleting_answered_reports
 
 from bot.keyboards.user_keyboards import support_keyboard, back_keyboard
@@ -72,20 +72,18 @@ support_requests = []
 
 # обработка кнопки для пересылания конфига для активации VPN пользователя   
 async def send_message(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-
     order_id = int(callback.data.split(".")[1])
     location = callback.data.split(".")[2]
     user_buy_id = int(callback.data.split(".")[3])
-
-    await state.update_data(order_id=order_id, location=location)
-
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        return
-    else:
+    expiration_date = await get_expiration_date(ID=order_id)
+    if expiration_date == None:
+        await state.update_data(order_id=order_id, location=location)
         await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/nZg0n9I", caption="• 🛒 <b>Покупка VPN</b>:\n\nПредоставьте ключ активации VPN для пользователя:", parse_mode="HTML"), reply_markup=back_keyboard)
         await BuyVPNStates.WAITING_FOR_MESSAGE_TEXT.set()
+    else:
+        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• 🛒 <b>Покупка VPN</b>:\n\nДругой модератор уже обработал этот VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
+        await state.finish()
+        return 
 
 async def handling_moder_file(message: Message, state: FSMContext):
     if message.text:
@@ -96,18 +94,22 @@ async def handling_moder_file(message: Message, state: FSMContext):
         if not int(order_id):
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• 🛒 <b>Покупка VPN</b>:\n\nID заказа не найден ❌", parse_mode="HTML")
             await state.finish()
+            return
         
         order_data = await get_order_id(int(order_id))
         if not order_data:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка</b>:\n\nЗаказа с таким ID не существует.", parse_mode="HTML")
             await state.finish()
+            return
             
         try:
             expiration_date = datetime.datetime.now() + timedelta(days=28)
             await update_vpn_state(order_id=int(order_id), expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S"), vpn_key=moder_vpn_key)
+            await addind_vpn_count(user_id=order_data[1])
             await message.answer_photo(photo="https://imgur.com/nZg0n9I", caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN для пользователя @{order_data[2]} (ID: <code>{order_data[1]}</code>) активирован и добавлен в базу данных ✅", parse_mode="HTML")
             await bot.send_photo(photo="https://imgur.com/VEYMRY2", chat_id=order_data[1], caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN успешно активирован ✅\n\nПодключитесь к VPN по нашей <code>инструкции</code>, с которой можно ознакомиться нажав на кнопку снизу.\n\n<i>Срок действия:</i> <code>{expiration_date.strftime('%d.%m.%Y %H:%M:%S')}</code>\n<i>Локация: </i>{location}\n\n<b>Ключ активации:</b>\n<pre>{moder_vpn_key}</pre>", parse_mode="HTML", reply_markup=finish_buy_vpn)
             await state.finish()
+            
         except Exception as e:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• 🛒 <b>Покупка VPN</b>:\n\nПроизошла ошибка во время записи данных ❌", parse_mode="HTML")
             await state.finish()
@@ -159,46 +161,36 @@ async def handling_moder_file(message: Message, state: FSMContext):
 
 # обработка сообщения админ панели
 async def adm_panel_handle(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        return
-    else:
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🤖 <b>Админ панель:</b>\n\nВыберите нужно действие: ", parse_mode="HTML"), reply_markup=adm_panel_keyboard)
+    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🤖 <b>Админ панель:</b>\n\nВыберите нужно действие: ", parse_mode="HTML"), reply_markup=adm_panel_keyboard)
     await callback.answer('')
 
 # обработка всех кнопок в админ панели
 async def adm_panel_buttons_handler(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        return
-    else:
-        # удаление и Пополнение баланса
-        if callback.data == "addind_balance_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML"), reply_markup=about_yourself_to_add_keyboard)
-            await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
+    # удаление и Пополнение баланса
+    if callback.data == "addind_balance_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML"), reply_markup=about_yourself_to_add_keyboard)
+        await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
 
-        elif callback.data == "deleting_balance_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML"), reply_markup=about_yourself_to_delete_keyboard)
-            await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
+    elif callback.data == "deleting_balance_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML"), reply_markup=about_yourself_to_delete_keyboard)
+        await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
 
-        elif callback.data == "user_data_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🗃 <b>Данные о пользователе:</b>\n\nВведите ID или USERNAME пользователя, информацию про которого хотите узнать: ", parse_mode="HTML"), reply_markup=back_keyboard)
-            await AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO.set()
+    elif callback.data == "user_data_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🗃 <b>Данные о пользователе:</b>\n\nВведите ID или USERNAME пользователя, информацию про которого хотите узнать: ", parse_mode="HTML"), reply_markup=back_keyboard)
+        await AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO.set()
 
-        elif callback.data == "vpn_user_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🛡️ <b>VPN пользователя:</b>\n\nВведите ID или USERNAME пользователя, информацию о VPN которого хотите узнать: ", parse_mode="HTML"), reply_markup=back_keyboard)
-            await UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO.set()
+    elif callback.data == "vpn_user_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 🛡️ <b>VPN пользователя:</b>\n\nВведите ID или USERNAME пользователя, информацию о VPN которого хотите узнать: ", parse_mode="HTML"), reply_markup=back_keyboard)
+        await UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO.set()
 
-        elif callback.data == "ban_user_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• ❌ <b>Блокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите заблокировать:", parse_mode="HTML"), reply_markup=back_keyboard)
-            await BanUserState.WAITING_FOR_USER_ID.set()
+    elif callback.data == "ban_user_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• ❌ <b>Блокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите заблокировать:", parse_mode="HTML"), reply_markup=back_keyboard)
+        await BanUserState.WAITING_FOR_USER_ID.set()
 
-        elif callback.data == "unban_user_callback":
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• ✅ <b>Разблокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите разблокировать:", parse_mode="HTML"), reply_markup=back_keyboard)
-            await UnbanUserState.WAITING_FOR_USER_ID.set()
-        await callback.answer('')
+    elif callback.data == "unban_user_callback":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• ✅ <b>Разблокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите разблокировать:", parse_mode="HTML"), reply_markup=back_keyboard)
+        await UnbanUserState.WAITING_FOR_USER_ID.set()
+    await callback.answer('')
 
 # обрабатывает кнопку about_yourself_keyboard, чтобы указать, что удаление баланса должно быть модератору, который нажал на кнопку
 async def deleting_balance_for_moder(callback: CallbackQuery, state):
@@ -215,16 +207,12 @@ async def adding_balance_for_moder(callback: CallbackQuery, state):
     global user_name_for_add
     user_id_for_add = callback.from_user.id
     user_name_for_add = callback.from_user.username
-    await callback.message.edit_media(media=InputMediaPhoto(media="", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите сумму для пополнения баланса:", parse_mode="HTML"), reply_markup=back_keyboard)
+    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите сумму для пополнения баланса:", parse_mode="HTML"), reply_markup=back_keyboard)
     await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
 
 # обработка разблокировки пользователя через информацию о пользователе
 async def unban_user2_handle(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     data = await state.get_data()
     user_id = int(data.get("user_id")) if data.get("user_id") else None
     user_name = data.get("user_name")
@@ -250,10 +238,6 @@ async def unban_user2_handle(callback: CallbackQuery, state: FSMContext):
 # обработка разблокировки пользователя 
 async def unban_user_handle(message: Message, state):
     user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         user_id = int(message.text)
         user_name = None
@@ -282,10 +266,6 @@ async def unban_user_handle(message: Message, state):
 # обработка блокировки пользователя через меню информации о пользователе
 async def ban_user2_handle(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     data = await state.get_data()
     user_id = int(data.get("user_id")) if data.get("user_id") else None
     user_name = data.get("user_name")
@@ -312,58 +292,49 @@ async def ban_user2_handle(callback: CallbackQuery, state: FSMContext):
 # обработка блокировки пользователей 
 async def ban_user_handle(message: Message, state):
     user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")        
-        await state.finish()
-        return
-    else:
-        try:
-            user_id = int(message.text)
-            user_name = None
-            is_registrated_user = await find_user_data(user_id=user_id)
-            if is_registrated_user:
-                result = await ban_users_handle(user_id=user_id)
-                if result != "banned":
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь успешно заблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
-                else:
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
+    try:
+        user_id = int(message.text)
+        user_name = None
+        is_registrated_user = await find_user_data(user_id=user_id)
+        if is_registrated_user:
+            result = await ban_users_handle(user_id=user_id)
+            if result != "banned":
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь успешно заблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
+            else:
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
+            await state.finish()
+        else:
+            attempts = await state.get_data()
+            if attempts.get("attempts", 0) >= 3:
+                await message.answer("Слишком много попыток ❌\nПопробуйте заново - /ban ")
                 await state.finish()
             else:
-                attempts = await state.get_data()
-                if attempts.get("attempts", 0) >= 3:
-                    await message.answer("Слишком много попыток ❌\nПопробуйте заново - /ban ")
-                    await state.finish()
-                else:
-                    await state.update_data(attempts=attempts.get("attempts", 0) + 1)
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь с таким <b>ID</b> не найден ❌\n\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
-        except Exception as e:
-            user_name = message.text
-            user_id = None
-            is_registrated_user = await find_user_data(user_name=user_name)
-            if is_registrated_user:
-                result = await ban_users_handle(user_name=user_name)
-                if result != "banned":
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь успешно заблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
-                else:
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
+                await state.update_data(attempts=attempts.get("attempts", 0) + 1)
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь с таким <b>ID</b> не найден ❌\n\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
+    except Exception as e:
+        user_name = message.text
+        user_id = None
+        is_registrated_user = await find_user_data(user_name=user_name)
+        if is_registrated_user:
+            result = await ban_users_handle(user_name=user_name)
+            if result != "banned":
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь успешно заблокирован ✅", parse_mode="HTML", reply_markup=back_keyboard)
+            else:
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nЭтот пользователь уже находится в бане ❌", parse_mode="HTML", reply_markup=back_keyboard)
 
+            await state.finish()
+        else:
+            attempts = await state.get_data()
+            if attempts.get("attempts", 0) >= 3:
+                await message.answer("Слишком много попыток ❌\nПопробуйте заново - /ban ")
                 await state.finish()
             else:
-                attempts = await state.get_data()
-                if attempts.get("attempts", 0) >= 3:
-                    await message.answer("Слишком много попыток ❌\nПопробуйте заново - /ban ")
-                    await state.finish()
-                else:
-                    await state.update_data(attempts=attempts.get("attempts", 0) + 1)
-                    await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
+                await state.update_data(attempts=attempts.get("attempts", 0) + 1)
+                await message.answer("• ❌ <b>Блокировка пользователя:</b>\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести ID или USERNAME заново:", parse_mode="HTML", reply_markup=back_keyboard)
 
 # обработка поиска информации о VPN пользователей
 async def find_info_about_users_vpn(message: Message, state):
     user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         user_id = int(message.text)
         user_name = None
@@ -406,10 +377,6 @@ async def find_info_about_users_vpn(message: Message, state):
 # обработка информации о пользователе
 async def find_user_info_for_adm_panel(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         user_id_for_find_info = int(message.text)
         user_name_for_find_info = None
@@ -420,12 +387,12 @@ async def find_user_info_for_adm_panel(message: Message, state: FSMContext):
     await state.update_data(user_name=user_name_for_find_info, user_id=user_id_for_find_info)
 
     if user_info:
-        id, user_id, user_name, balance, time_of_registration, referrer_id, used_promocodes, is_banned = user_info[0]
+        id, user_id, user_name, balance, time_of_registration, referrer_id, used_promocodes, is_banned, vpns_count = user_info[0]
         used_promocodes_text = "-" if not used_promocodes else ", ".join(used_promocodes.split(","))[:-2]
         is_banned = "-" if is_banned == 0 else "+"
         referrer_username = "Пользователь без <b>USERNAME</b>" if referrer_id is None else "@" + (await get_referrer_info(user_id=referrer_id))[0][0]
 
-        user_info_text = f"• 🗃 <b>Данные о пользователе</b>:\n\nID в базе данных: <code>{id}</code>\nTelegram ID: <code>{user_id}</code>\nUsername пользователя: <code>{user_name}</code>\nБаланс: <code>{balance}</code> ₽\nВремя регистрации: <code>{time_of_registration}</code>\nРеферер: {referrer_username} (ID: <code>{referrer_id}</code>)\nИспользованные промокоды: <code>{used_promocodes_text}</code>\nЗабанен ли пользователь: <code>{is_banned}</code>"
+        user_info_text = f"• 🗃 <b>Данные о пользователе</b>:\n\nID в базе данных: <code>{id}</code>\nTelegram ID: <code>{user_id}</code>\nUsername пользователя: <code>{user_name}</code>\nБаланс: <code>{balance}</code> ₽\nВремя регистрации: <code>{time_of_registration}</code>\nРеферер: {referrer_username} (ID: <code>{referrer_id}</code>)\nИспользованные промокоды: <code>{used_promocodes_text}</code>\nЗабанен ли пользователь: <code>{is_banned}</code>\nКол-во VPN за все время: <code>{vpns_count}</code>"
         await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=user_info_text, reply_markup=user_find_data, parse_mode="HTML")
         await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
 
@@ -451,12 +418,6 @@ async def find_user_info_for_adm_panel(message: Message, state: FSMContext):
 
 # обработка информации о VPN пользователей через меню управления пользователем
 async def vpn_info_handle(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await callback.message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
-
     data = await state.get_data()
     user_id1 = int(data.get("user_id")) if data.get("user_id") else None
     user_name = data.get("user_name")
@@ -492,30 +453,19 @@ async def vpn_info_handle(callback: CallbackQuery, state: FSMContext):
 
 # Пополнение баланса администратором
 async def handling_user_name(message: Message, state):
-    user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")        
-        await state.finish()
-        return
-    else:
-        global user_id_for_add
-        global user_name_for_add
-        try:
-            user_id_for_add = int(message.text)
-            user_name_for_add = None
-        except Exception as e:
-            user_name_for_add = message.text
-            user_id_for_add = None
-        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nВведите сумму для пополнения баланса:", reply_markup=back_keyboard, parse_mode="HTML")
-        await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
+    global user_id_for_add
+    global user_name_for_add
+    try:
+        user_id_for_add = int(message.text)
+        user_name_for_add = None
+    except Exception as e:
+        user_name_for_add = message.text
+        user_id_for_add = None
+    await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nВведите сумму для пополнения баланса:", reply_markup=back_keyboard, parse_mode="HTML")
+    await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
 
 # ожидание суммы пополнения баланса модератором
 async def handle_for_adm_add_sum(message: Message, state):
-    user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         global adm_sum_for_add
         adm_sum_for_add = int(message.text)
@@ -539,7 +489,7 @@ async def handle_for_adm_add_sum(message: Message, state):
     user_info = await find_user_data(user_id=user_id_for_add, user_name=user_name_for_add)
     if user_info:
         user_id_for_reply = user_info[0][1]
-        await add_operation(adm_sum_for_add, user_id=user_id_for_add, user_name=user_name_for_add)
+        await add_operation(adm_sum_for_add, user_id=user_id_for_add)
         await bot.send_photo(photo="https://imgur.com/i4sEHgp", chat_id=user_id_for_reply, caption=f"• 💵 <b>Пополнение баланса</b>:\n\nМодератор пополнил ваш баланс на сумму: {adm_sum_for_add} ₽ ✅", parse_mode="HTML")
 
     await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nБаланс указанного пользователя пополнен на: {adm_sum_for_add} ₽ ✅", reply_markup=back_keyboard, parse_mode="HTML")
@@ -548,11 +498,6 @@ async def handle_for_adm_add_sum(message: Message, state):
 
 # удаление баланса модераторами
 async def handling_user_name_for_delete(message: Message, state):
-    user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         global user_id_for_delete
         global user_name_for_delete
@@ -561,16 +506,11 @@ async def handling_user_name_for_delete(message: Message, state):
     except ValueError:
         user_name_for_delete = message.text
         user_id_for_delete = None
-    await message.answer_photo(photo="", caption=f"• 💵 <b>Удаление баланса:</b>\n\nВведите сумму для удаления баланса:", reply_markup=back_keyboard, parse_mode="HTML")
+    await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Удаление баланса:</b>\n\nВведите сумму для удаления баланса:", reply_markup=back_keyboard, parse_mode="HTML")
     await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_DELETE.set()
 
 # обработка числа для удаления баланса модераторами
 async def handle_for_adm_delete_sum(message: Message, state):
-    user_id = message.from_user.id
-    if await is_user_ban_check(user_id=user_id):
-        await message.answer_photo(photo="https://imgur.com/43en7Eh", caption="• ❌ <b>Вы заблокированы</b>:\n\n<i>Вы можете узнать причину блокировки, спросив у модераторов: </i>", reply_markup=support_keyboard, parse_mode="HTML")
-        await state.finish()
-        return
     try:
         adm_sum_for_delete = int(message.text)
         if adm_sum_for_delete <= 0:
@@ -597,8 +537,8 @@ async def handle_for_adm_delete_sum(message: Message, state):
         if balance >= adm_sum_for_delete:
             await delete_sum_operation(adm_sum_for_delete, user_id=user_id_for_delete, user_name=user_name_for_delete)
             await edit_operations_history(user_id=user_id_for_delete, user_name=user_name_for_delete, operations=(-adm_sum_for_delete), description_of_operation="🤖 Модератор")
-            await bot.send_photo(photo="https://imgur.com/i4sEHgp", chat_id=user_id_for_reply, caption=f"• 💵 <b>Удаление баланса</b>:\n\nМодератор удалил ваш баланс на сумму: {adm_sum_for_delete} ₽ ", parse_mode="HTML")
-            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Удаление баланса:</b>\n\nБаланс указанного пользователя удален на: {adm_sum_for_delete} ₽ ✅", reply_markup=back_keyboard, parse_mode="HTML")
+            await bot.send_photo(photo="https://imgur.com/i4sEHgp", chat_id=user_id_for_reply, caption=f"• 💵 <b>Удаление баланса</b>:\n\nМодератор удалил ваш баланс на сумму: <code>{adm_sum_for_delete}</code> ₽ ", parse_mode="HTML")
+            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Удаление баланса:</b>\n\nБаланс указанного пользователя удален на: <code>{adm_sum_for_delete}</code> ₽ ✅", reply_markup=back_keyboard, parse_mode="HTML")
             await state.finish()
         else:
             attempts = await state.get_data()

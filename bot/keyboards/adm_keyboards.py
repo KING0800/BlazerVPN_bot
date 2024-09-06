@@ -67,13 +67,13 @@ about_yourself_to_delete_keyboard.add(
 
 finish_buy_vpn = InlineKeyboardMarkup()
 finish_buy_vpn.add(
-    InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extension_vpn"),
+    InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extend_vpn_info"),
     InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard")
 )
 
 extension_keyboard = InlineKeyboardMarkup()
 extension_keyboard.add(
-    InlineKeyboardButton(text="💵 Продлить VPN", callback_data="extension_vpn")
+    InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extend_vpn_info")
 )
 
 buy_info_keyboard = InlineKeyboardMarkup()

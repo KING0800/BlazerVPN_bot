@@ -21,20 +21,21 @@ async def TempData_db_start():
 async def save_temp_message(user_id, message_text, message_markup, photo_url):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT COUNT() FROM TempData WHERE user_id = ?", (user_id,))
-        count = cur.fetchone()[0]
-        print("asldkas;ldk")
-        if count >= 15: 
+        try:
+            cur.execute("SELECT COUNT(*) FROM TempData WHERE user_id = ?", (user_id,))
+            count = cur.fetchone()[0]
+            if count >= 15:
+                cur.execute("SELECT message_id FROM TempData WHERE user_id = ? ORDER BY message_id ASC LIMIT 1", (user_id,))
+                message_id = cur.fetchone()[0] 
+                await delete_temp_message(user_id, message_id)
             cur.execute(
-                "DELETE FROM TempData WHERE user_id = ? AND message_id = (SELECT MIN(message_id) FROM TempData WHERE user_id = ?)", 
-                (user_id, user_id)
-            ) 
-        cur.execute(
-            "INSERT INTO TempData (user_id, message_text, message_markup, photo_url) VALUES (?, ?, ?, ?)",
-            (user_id, message_text, message_markup, photo_url)
-        )
-        print("kasdlaskd")
-        db.commit()
+                "INSERT INTO TempData (user_id, message_text, message_markup, photo_url) VALUES (?, ?, ?, ?)",
+                (user_id, message_text, message_markup, photo_url)
+            )
+            db.commit()
+        except Exception as e:
+            print(f"Ошибка при сохранении сообщения в базу данных: {e}")
+
 
 # получение сообщений и inline кнопок, для последующего использования кнопки "Назад"
 async def get_temp_message(user_id, message_id=None):
@@ -52,13 +53,14 @@ async def get_temp_message(user_id, message_id=None):
             )
         row = cur.fetchone()
         if row:
+            await delete_temp_message(user_id=user_id, message_id=message_id)
             return row[0], row[1], row[2]
         db.commit()
         return None, None, None
         
 
 # удаление сообщений и inline кнопок, используемых для кнопки "Назад"
-async def delete_temp_message(user_id, message_id=None):
+async def delete_temp_message(user_id, message_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()
         if message_id:
@@ -81,6 +83,6 @@ async def find_message_id(user_id):
             "SELECT MAX(message_id) FROM TempData WHERE user_id = ?", 
             (user_id,)
         )
-        message_id = cur.fetchone()[0]
+        message_id = cur.fetchone()[0] 
         db.commit()
         return message_id

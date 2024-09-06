@@ -27,6 +27,7 @@ async def update_vpn_state(order_id, expiration_days, vpn_key):
             (expiration_days, vpn_key, order_id)
         )
         db.commit()
+        
 # обновление данных после продления VPN
 async def extend_vpn_state(user_id, location, expiration_date, id):
     with sq.connect('database.db') as db:
@@ -52,7 +53,7 @@ async def check_expired_vpns():
             for vpn in vpn_data:
                 user_id = vpn[1]
                 user_name = vpn[2]
-                expiration_date_str = vpn[3]
+                expiration_date_str = vpn[4]
                 expiration_date = datetime.strptime(expiration_date_str, "%d.%m.%Y %H:%M:%S")
                 if current_time > expiration_date:
                     cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
@@ -82,7 +83,7 @@ async def check_vpn_expiration_for_days(days: int):
             for vpn in vpn_data:
                 user_id = vpn[1]
                 user_name = vpn[2]
-                expiration_date_str = vpn[3]
+                expiration_date_str = vpn[4]
                 expiration_date = datetime.strptime(expiration_date_str, "%d.%m.%Y %H:%M:%S").date()
                 days_remaining = (expiration_date - current_date).days
 
@@ -136,6 +137,13 @@ async def get_vpn_data(user_id=None, user_name=None):
             else:
                 return None, None, None, None, None, None
         db.commit()
+
+async def get_expiration_date(ID):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT expiration_date FROM VpnData WHERE id = ?", (ID,))
+        expiration_date = cur.fetchall()[0][0]
+        return expiration_date
 
 async def save_order_id(user_id, user_name, location):
     with sq.connect('database.db') as db:

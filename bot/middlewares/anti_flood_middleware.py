@@ -8,11 +8,11 @@ from aiogram.dispatcher.handler import CancelHandler, current_handler
 last_message_times = {}
 
 class AntiFloodMiddleware(BaseMiddleware):
-    def __init__(self, limit: int, cooldown: int):
+    def __init__(self, limit: int, cooldown: int) -> None:
         BaseMiddleware.__init__(self)
         self.rate_limit = limit
         self.cooldown = cooldown
-
+    
     async def on_process_message(self, message: types.Message, data: dict):
         handler = current_handler.get()
         dp = Dispatcher.get_current()

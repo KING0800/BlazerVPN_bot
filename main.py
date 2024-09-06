@@ -18,6 +18,7 @@ from bot.database.SupportData import SupportData_db_start
 
 from bot.middlewares.anti_flood_middleware import AntiFloodMiddleware
 from bot.middlewares.save_temp_messages import MessageSaverMiddleware
+from bot.middlewares.check_is_user_ban_middleware import CheckIsUserBanMiddleware
 
 
 def register_handler(dp: Dispatcher) -> None:
@@ -32,7 +33,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 async def main(dp: Dispatcher) -> None:
     dp.middleware.setup(AntiFloodMiddleware(limit=5, cooldown=5))
     dp.middleware.setup(MessageSaverMiddleware())
-
+    dp.middleware.setup(CheckIsUserBanMiddleware())
     load_dotenv('.env')
 
     try:

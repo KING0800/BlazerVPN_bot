@@ -17,7 +17,8 @@ async def UserInfo_db_start():
             "time_of_registration TEXT,"
             "referrer_id INTEGER, "
             "used_promocodes TEXT,"
-            "is_ban BOOLEAN DEFAULT False"
+            "is_ban BOOLEAN DEFAULT False,"
+            "vpns_count INTEGER DEFAULT 0"
             ")"
         )
         db.commit()
@@ -44,6 +45,19 @@ async def edit_profile(user_name, user_id, referrer_id=None):
                     (user_id, user_name, registration_time)
                 )
         db.commit()
+
+async def info_about_user(user_id: int):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "SELECT * FROM UserINFO WHERE user_id = ?",
+            (user_id,)
+        )
+        row = cur.fetchall()
+        if row != None:
+            return row[0]
+        else:
+            return None
 
 # получение данных о балансе пользователя
 async def get_balance(user_name=None, user_id=None):
@@ -241,3 +255,13 @@ async def is_user_ban_check(user_id):
             return False
         elif result[0] == 1:
             return True
+
+async def addind_vpn_count(user_id):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT vpns_count FROM UserINFO WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()
+        vpn_count = result[0] if result else 0
+        vpn_count += 1
+        cur.execute("UPDATE UserINFO SET vpns_count = ? WHERE user_id = ?", (vpn_count, user_id))
+        db.commit()
