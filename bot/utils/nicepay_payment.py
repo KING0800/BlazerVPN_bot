@@ -1,11 +1,18 @@
 import requests
+import os
+
+from dotenv import load_dotenv
 from uuid import uuid4
 
+load_dotenv(".env")
+
+NICEPAY_MERCHANT_ID = os.getenv("NICEPAY_MERCHANT_ID") 
+NICEPAY_SECRET = os.getenv("NICEPAY_SECRET_KEY")
 
 def create_nicepay_payment(amount: int, email: str):
     order_id = uuid4()
-    data = {'merchant_id': '668b36da2ef9b83f7d450caf',
-            "secret": 'qVs6q-vOu0P-o78h7-xOrvR-XWf6c', 
+    data = {'merchant_id': NICEPAY_MERCHANT_ID,
+            "secret": NICEPAY_SECRET, 
             "order_id": f'{order_id}', 
             "customer": f'{email}', 
             "amount": f'{amount * 100}', 

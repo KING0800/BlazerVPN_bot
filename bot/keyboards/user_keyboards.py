@@ -7,7 +7,6 @@ load_dotenv('.env')
 
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN") 
 ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
-HELPER_CHAT_TOKEN = os.getenv("HELPER_CHAT_TOKEN")
 
 # стартовая клавиатура, чтобы управлять вообще ботом
 def start_kb_handle(user_id) -> InlineKeyboardMarkup:
@@ -29,7 +28,7 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
     start_keyboard.add(
         InlineKeyboardButton(text="👤 Профиль", callback_data="profile_callback")
     )
-    if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN) or int(user_id) == int(HELPER_CHAT_TOKEN):
+    if int(user_id) == int(BLAZER_CHAT_TOKEN) or int(user_id) == int(ANUSH_CHAT_TOKEN):
         start_keyboard.add(
             InlineKeyboardButton(text="🤖 Панель администратора", callback_data="adm_panel_callback")
         )
@@ -99,7 +98,8 @@ back_keyboard.add(
 # клавиатура по обработке инструкций
 insturtion_keyboard = InlineKeyboardMarkup()
 insturtion_keyboard.add(
-    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard")
+    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard"),
+    InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
 # клавиатура по покупке VPN
@@ -251,3 +251,14 @@ check_balance_keyboard = InlineKeyboardMarkup()
 check_balance_keyboard.add(
     InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance")
 )
+
+def checking_message_limit(current_message_part: int) -> InlineKeyboardMarkup:
+    check_message_limit_kb = InlineKeyboardMarkup()
+    check_message_limit_kb.add(
+        InlineKeyboardButton(text=f"Следующая страница ({current_message_part + 1})", callback_data=f'vpn_info_{current_message_part + 1}')
+)
+    check_message_limit_kb.add(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+) 
+    
+    return check_message_limit_kb

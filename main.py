@@ -26,6 +26,8 @@ def register_handler(dp: Dispatcher) -> None:
     register_adm_handlers(dp=dp)
     register_command_handlers(dp=dp)
 
+
+load_dotenv('.env')
 token = os.getenv("BOT_TOKEN")
 bot = Bot(token)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -34,7 +36,6 @@ async def main(dp: Dispatcher) -> None:
     dp.middleware.setup(AntiFloodMiddleware(limit=5, cooldown=5))
     dp.middleware.setup(MessageSaverMiddleware())
     dp.middleware.setup(CheckIsUserBanMiddleware())
-    load_dotenv('.env')
 
     try:
         await OperationsData_db_start()
@@ -50,6 +51,7 @@ async def main(dp: Dispatcher) -> None:
     asyncio.create_task(notification_moders_for_vpns_end())
 
     register_handler(dp=dp)
+
 
     
 if __name__ == "__main__":

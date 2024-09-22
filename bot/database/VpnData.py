@@ -2,6 +2,8 @@ import sqlite3 as sq
 
 from datetime import datetime, timezone
 
+from bot.utils.outline import delete_key
+
 # создание таблицы для данных о VPN пользователей
 async def VpnData_db_start():
     with sq.connect('database.db') as db:
@@ -19,12 +21,24 @@ async def VpnData_db_start():
         db.commit()
 
 # обновление данных о vpn
-async def update_vpn_state(order_id, expiration_days, vpn_key):
+async def update_vpn_half_info(user_id: str | int = None, user_name: str = None, location: str = None, expiration_days: str = None) -> int | None:
     with sq.connect('database.db') as db:
         cur = db.cursor()
         cur.execute(
-            "UPDATE VpnData SET expiration_date = ?, vpn_key = ? WHERE id = ?",
-            (expiration_days, vpn_key, order_id)
+            "INSERT INTO VpnData (user_id, user_name, location, expiration_date) VALUES (?, ?, ?, ?)",  # Исправленный запрос
+            (user_id, user_name, location, expiration_days)
+        )
+        vpn_id = cur.lastrowid
+        db.commit()
+        return vpn_id
+
+
+async def update_vpn_other_info(vpn_id: int, vpn_key: str):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute(
+            "UPDATE VpnData SET vpn_key = ? WHERE id = ?",
+            (vpn_key, vpn_id)
         )
         db.commit()
         
@@ -51,12 +65,14 @@ async def check_expired_vpns():
         vpn_data = cur.fetchall()
         if vpn_data: 
             for vpn in vpn_data:
+                vpn_id = vpn[0]
                 user_id = vpn[1]
                 user_name = vpn[2]
                 expiration_date_str = vpn[4]
                 expiration_date = datetime.strptime(expiration_date_str, "%d.%m.%Y %H:%M:%S")
                 if current_time > expiration_date:
                     cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
+                    delete_key(vpn_id)
                     db.commit()
                     info_list = [user_id, user_name, expiration_date]
                     list.append(info_list)
@@ -122,7 +138,7 @@ async def get_vpn_data(user_id=None, user_name=None):
                     for id, user_db_id, user_db_name, location, expiration_date, vpn_key in vpn_data
                 ]
             else:
-                return None, None, None, None, None, None
+                return []
         elif user_name is not None:
             cur.execute("SELECT * FROM VpnData WHERE user_name = ?", (user_name,))
             vpn_data = cur.fetchall()
@@ -135,7 +151,7 @@ async def get_vpn_data(user_id=None, user_name=None):
                     for id, user_db_id, user_db_name, location, expiration_date, vpn_key in vpn_data
                 ]
             else:
-                return None, None, None, None, None, None
+                return []
         db.commit()
 
 async def get_expiration_date(ID):
@@ -144,21 +160,23 @@ async def get_expiration_date(ID):
         cur.execute("SELECT expiration_date FROM VpnData WHERE id = ?", (ID,))
         expiration_date = cur.fetchall()[0][0]
         return expiration_date
-
-async def save_order_id(user_id, user_name, location):
-    with sq.connect('database.db') as db:
-        cur = db.cursor()
-        cur.execute(
-            "INSERT INTO VpnData (user_id, user_name, location) VALUES (?, ?, ?)",
-            (user_id, user_name, location)
-        )
-        order_id = cur.lastrowid
-        db.commit()
-        return order_id
     
+
+
 async def get_order_id(order_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()        
         cur.execute("SELECT * FROM VpnData WHERE id = ?", (order_id,))
         order_data = cur.fetchone()
         return order_data
+
+async def delete_vpn(vpn_id):
+    with sq.connect('database.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT * FROM VpnData WHERE id = ?", (vpn_id,))
+        if cur.fetchone() is None:
+            return None
+        cur.execute("DELETE FROM VpnData WHERE id = ?", (vpn_id,))
+        db.commit()
+        delete_key(key_id=vpn_id)
+        return True

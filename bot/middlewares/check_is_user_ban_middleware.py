@@ -4,6 +4,7 @@ from aiogram.dispatcher.handler import CancelHandler
 
 from bot.keyboards.user_keyboards import support_keyboard
 from bot.database.UserData import is_user_ban_check, find_user_data, edit_profile
+from bot.handlers.cmd_handlers import register_commands
 
 class CheckIsUserBanMiddleware(BaseMiddleware):
     async def on_pre_process_update(self, update: Update, data: dict):
@@ -33,4 +34,6 @@ class CheckIsUserBanMiddleware(BaseMiddleware):
                     return
         else:
             return
+        
+        
 

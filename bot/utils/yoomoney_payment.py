@@ -6,8 +6,8 @@ from uuid import uuid4
 
 load_dotenv(".env")
 
-PAYMENT_TOKEN = os.getenv("PAYMENT_TOKEN") 
-CLIENT_PAYMENT_TOKEN = os.getenv("CLIENT_PAYMENT_TOKEN")
+PAYMENT_TOKEN = os.getenv("YOOMONEY_PAYMENT_TOKEN") 
+CLIENT_PAYMENT_TOKEN = os.getenv("YOOMONEY_CLIENT_PAYMENT_TOKEN")
 
 client = Client(CLIENT_PAYMENT_TOKEN)
 

@@ -136,7 +136,7 @@ async def add_operation(price, user_id=None, user_name=None):
 async def get_referrer_info(user_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT user_id, user_name FROM UserINFO WHERE referrer_id = ?", (user_id,))
+        cur.execute("SELECT user_id, user_name FROM UserINFO WHERE user_id = ?", (user_id,))
         refferers_info = cur.fetchall()
         if refferers_info:
             return refferers_info

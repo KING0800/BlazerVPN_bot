@@ -15,6 +15,13 @@ adm_panel_keyboard.add(
     InlineKeyboardButton(text="✅ Разблокировать", callback_data="unban_user_callback")
 )
 adm_panel_keyboard.add(
+    InlineKeyboardButton(text="🛡️ Добавить VPN", callback_data="add_vpn_callback"),
+    InlineKeyboardButton(text="🛡️ Удалить VPN", callback_data="delete_vpn_callback")
+)
+adm_panel_keyboard.add(
+    InlineKeyboardButton(text="📋 История операций пользователя", callback_data="user_history_callback")
+)
+adm_panel_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -80,3 +87,58 @@ buy_info_keyboard = InlineKeyboardMarkup()
 buy_info_keyboard.add(
     InlineKeyboardButton(text="🛒 Купить VPN", callback_data="buy")
 )
+
+def location_kb(user_id: int | str, user_name: str) -> InlineKeyboardMarkup:
+    location_keyboard = InlineKeyboardMarkup()
+    location_keyboard.add(
+            # InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data=f"Finland_callback_{user_id}_{user_name}"),   
+            # InlineKeyboardButton(text="🇩🇪 Германия", callback_data=f"Germany_callback_{user_id}_{user_name}"),
+            InlineKeyboardButton(text="🇸🇪 Швеция", callback_data=f"Sweden_callback_{user_id}_{user_name}"),
+            # InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="fNetherlands_callback_{user_id}_{user_name}"),
+    )        
+    location_keyboard.add(
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return location_keyboard
+
+async def vpn_connection_type_keyboard(location, user_id) -> InlineKeyboardMarkup:
+    vpn_connection_type_keyboard = InlineKeyboardMarkup()
+    vpn_connection_type_keyboard.add(
+        InlineKeyboardButton(text="🧦 Shadowsocks", callback_data=f"vpn_connection_type_adm.{location}.{user_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back") 
+    )
+    return vpn_connection_type_keyboard
+
+def pay_sweden_keyboard(user_id) -> InlineKeyboardMarkup:
+    pay_sweden_keyboard = InlineKeyboardMarkup()
+    pay_sweden_keyboard.add(
+        InlineKeyboardButton(text="🛒 Купить", callback_data=f"Buying_sweden_adm.{user_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return pay_sweden_keyboard
+
+# обработка покупки VPN на локации Финляндия
+def pay_finland_keyboard(user_id) -> InlineKeyboardMarkup:
+    pay_finland_keyboard = InlineKeyboardMarkup()
+    pay_finland_keyboard.add(
+        InlineKeyboardButton(text="🛒 Купить", callback_data=f"Buying_finland_adm.{user_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return pay_finland_keyboard
+
+# обработка покупки VPN на локации Германия
+def pay_germany_keyboard(user_id) -> InlineKeyboardMarkup:
+    pay_germany_keyboard = InlineKeyboardMarkup()
+    pay_germany_keyboard.add(
+        InlineKeyboardButton(text="🛒 Купить", callback_data=f"Buying_germany_adm.{user_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return pay_germany_keyboard
+
+def pay_netherlands_keyboard(user_id) -> InlineKeyboardMarkup:
+    pay_netherlands_keyboard = InlineKeyboardMarkup()
+    pay_netherlands_keyboard.add(
+        InlineKeyboardButton(text="🛒 Купить", callback_data=f"Buying_netherlands_adm.{user_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return pay_netherlands_keyboard

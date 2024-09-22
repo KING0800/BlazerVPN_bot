@@ -41,12 +41,21 @@ async def edit_operations_history(user_id, user_name, operations, description_of
         db.commit()
 
 # получение информации о истории операций с бд
-async def getting_operation_history(user_id):
+async def getting_operation_history(user_id=None, user_name=None):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT * FROM OperationsHistory WHERE user_id = ?", (user_id,))
-        operation_history = cur.fetchall()
-        if operation_history is None:
-            return None
-        else:
-            return operation_history
+        if user_id != None:
+            cur.execute("SELECT * FROM OperationsHistory WHERE user_id = ?", (user_id,))
+            operation_history = cur.fetchall()
+            if operation_history is None:
+                return None
+            else:
+                return operation_history
+        elif user_name != None:
+            cur.execute("SELECT * FROM OperationsHistory WHERE user_name = ?", (user_name,))
+            operation_history = cur.fetchall()
+            if operation_history is None:
+                return None
+            else:
+                return operation_history
+

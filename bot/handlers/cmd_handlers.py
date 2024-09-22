@@ -2,9 +2,9 @@ import os
 
 from dotenv import load_dotenv
 
-from aiogram import Dispatcher
+from aiogram import Dispatcher, Bot
 from aiogram.dispatcher.filters.state import StatesGroup, State
-from aiogram.types import Message
+from aiogram.types import Message, BotCommand
 from datetime import datetime
 
 from bot.handlers.user_handlers import taking_vpn_price
@@ -18,6 +18,11 @@ from bot.database.TempData import save_temp_message
 from bot.database.OperationsData import getting_operation_history
 from bot.database.SupportData import getting_question
 
+load_dotenv('.env')
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+bot = Bot(BOT_TOKEN)
 
 """********************************************************************** СОСТОЯНИЯ ******************************************************************"""
 
@@ -55,18 +60,27 @@ class BanUserState(StatesGroup):
 class UnbanUserState(StatesGroup):
     WAITING_FOR_USER_ID = State()
 
+class AddVpnForUsers(StatesGroup):
+    WAITING_FOR_USER_ID = State()
+    
+class DeleteVpnForUsers(StatesGroup):
+    WAITING_FOR_USER_ID = State()
+    WAITING_FOR_USER_ID_FOR_DELETE = State()
+
+class FindUserHistory(StatesGroup):
+    WAITING_FOR_USER_ID = State()
+
 # импорт токенов из файла .env
 load_dotenv('.env')
 ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN")
-HELPER_CHAT_TOKEN = os.getenv("HELPER_CHAT_TOKEN")
 
 """******************************************************************* ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСЕХ КОМАНД *******************************************************"""
 
 async def handle_text(message: Message, state):
     user_id = message.from_user.id
     if message.text == "/help":
-        if user_id == int(ANUSH_CHAT_TOKEN) or user_id == int(BLAZER_CHAT_TOKEN) or user_id == int(HELPER_CHAT_TOKEN):
+        if user_id == int(ANUSH_CHAT_TOKEN) or user_id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/aQbOPS0",
                                         caption="<b>• Доступные команды:</b>\n\n"
                             "/start - Обновить бота\n"
@@ -82,14 +96,18 @@ async def handle_text(message: Message, state):
                             "/promocode - 🎟 Промокоды\n"
                             "/history_of_operations - 📋 История операций\n"
                             "/instruction - 📄 Инструкция по использованию VPN\n"
+                            "/profile - 👤 Профиль\n"
                             "************** <code>АДМИН КОМАНДЫ</code> **************\n"
                             "/user_info - 🗃 Данные о пользователях\n"
                             "/user_vpn - 🛡️ VPN пользователей\n"
                             "/add - 💵 Пополнение баланса\n"
                             "/delete - 💵 Удаление баланса\n"
                             "/ban - ❌ Заблокировать пользователя\n"
-                            "/unban - ✅ Разблокировать пользователя\n", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
-            
+                            "/unban - ✅ Разблокировать пользователя\n"
+                            "/add_vpn - 🛡️ Добавить VPN пользователю\n"
+                            "/delete_vpn - 🛡️ Удалить VPN пользователю\n"
+                            "/user_history - 📋 История операций пользователя\n", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
+
         else:
             await message.answer_photo(photo="https://imgur.com/aQbOPS0",
                                         caption="<b>• Доступные команды:</b>\n\n"
@@ -105,9 +123,9 @@ async def handle_text(message: Message, state):
                             "/ref_system - 🤝 Реферальная система\n"
                             "/promocode - 🎟 Промокоды\n"
                             "/history_of_operations - 📋 История операций\n"
-                            "/instruction - 📄 Инструкция по использованию VPN", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
+                            "/instruction - 📄 Инструкция по использованию VPN\n"
+                            "/profile - 👤 Профиль\n", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
 
-        
     elif message.text == "/balance":
         user_id = message.from_user.id
         balance = await get_balance(user_id=user_id)
@@ -257,46 +275,59 @@ async def handle_text(message: Message, state):
 
     ##### ADM COMMANDS
     elif message.text == "/add":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_add_keyboard)
             await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
             
     elif message.text == "/delete":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_delete_keyboard)
             await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
             
     elif message.text == "/ban":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• ❌ <b>Блокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите заблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
             await BanUserState.WAITING_FOR_USER_ID.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
 
     elif message.text == "/unban":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• ✅ <b>Разблокировка пользователя:</b>\n\nВведите ID или USERNAME пользователя, которого хотите разблокировать:", parse_mode="HTML", reply_markup=back_keyboard)
             await UnbanUserState.WAITING_FOR_USER_ID.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
 
     elif message.text == "/user_info":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🗃 <b>Данные о пользователе:</b>\n\nВведите ID или USERNAME пользователя, информацию про которого хотите узнать: ", parse_mode="HTML", reply_markup=back_keyboard)
             await AdmButtonState.WAITING_FOR_USER_ID_FOR_USER_INFO.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
 
     elif message.text == "/user_vpn":
-        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN) or message.from_user.id == int(HELPER_CHAT_TOKEN):
+        if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡️ <b>VPN пользователя:</b>\n\nВведите ID или USERNAME пользователя, информацию о VPN которого хотите узнать: ", parse_mode="HTML", reply_markup=back_keyboard)
             await UserVPNInfo.WAITING_FOR_USER_ID_FOR_USER_VPN_INFO.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
+    
+    elif message.text == "/add_vpn":
+        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡️ <b>Добавление VPN:</b>\n\nВведите <code>ID</code> или <code>USERNAME</code> пользователя, которому хотите добавить VPN:", parse_mode="HTML", reply_markup=back_keyboard)
+        await AddVpnForUsers.WAITING_FOR_USER_ID.set()
+    
+    elif message.text == "/delete_vpn":
+        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡️ <b>Удаление VPN:</b>\n\nВведите <code>ID</code> или <code>USERNAME</code> пользователя, которому хотите удалить VPN:", parse_mode="HTML", reply_markup=back_keyboard)
+        await DeleteVpnForUsers.WAITING_FOR_USER_ID.set()
+
+    elif message.text == "/user_history":
+        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 📋 <b>История операций пользователя:</b>\n\nВведите <code>ID</code> или <code>USERNAME</code> пользователя, историю операций которого хотите узнать:", parse_mode="HTML", reply_markup=back_keyboard)
+        await FindUserHistory.WAITING_FOR_USER_ID.set()
+
     else:
         await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nНеверная команда. Пожалуйста, используйте одну из доступных команд (/help)", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
 

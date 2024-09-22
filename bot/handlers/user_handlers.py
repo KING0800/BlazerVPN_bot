@@ -1,34 +1,34 @@
 import os 
 import json
 import dns.resolver
+import datetime
 
 from dotenv import load_dotenv
 from typing import NamedTuple
-import datetime
 
 from aiogram import Bot, Dispatcher
 from aiogram.dispatcher import FSMContext
-from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 from bot.database.OperationsData import edit_operations_history, getting_operation_history
 from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
 from bot.database.UserData import edit_profile, addind_vpn_count, get_balance, buy_operation, add_operation, pay_operation, get_referrer_info, check_promocode_used, save_promocode, find_user_data
-from bot.database.VpnData import save_order_id, extend_vpn_state, get_vpn_data
+from bot.database.VpnData import extend_vpn_state, get_vpn_data, update_vpn_other_info, update_vpn_half_info
 from bot.database.SupportData import edit_data, getting_question
 
-from bot.keyboards.user_keyboards import check_balance_keyboard,create_payment_keyboard, payment_type_keyboard, final_extend_some_vpn, profile_keyboard, support_to_moders, start_kb_handle, vpn_connection_type_keyboard, pay_netherlands_keyboard, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, support_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, promocode_keyboard, device_keyboard
+from bot.keyboards.user_keyboards import checking_message_limit, check_balance_keyboard,create_payment_keyboard, payment_type_keyboard, final_extend_some_vpn, profile_keyboard, support_to_moders, start_kb_handle, vpn_connection_type_keyboard, pay_netherlands_keyboard, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, support_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, promocode_keyboard, device_keyboard
 from bot.keyboards.adm_keyboards import reply_keyboard, reply_buy_keyboard
 
 from bot.utils.yoomoney_payment import yoomoney_check, create_yoomoney_payment
 from bot.utils.nicepay_payment import nicepay_check, create_nicepay_payment
+from bot.utils.outline import create_new_key, find_keys_info 
 
 # импорт токенов из файла .env
 load_dotenv('.env')
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BLAZER_CHAT_TOKEN = os.getenv("BLAZER_CHAT_TOKEN") 
 ANUSH_CHAT_TOKEN = os.getenv("ANUSH_CHAT_TOKEN")
-HELPER_CHAT_TOKEN = os.getenv("HELPER_CHAT_TOKEN")
 VPN_SWEDEN_PRICE_TOKEN = os.getenv("VPN_SWEDEN_PRICE_TOKEN") 
 VPN_FINLAND_PRICE_TOKEN = os.getenv("VPN_FINLAND_PRICE_TOKEN")
 VPN_GERMANY_PRICE_TOKEN = os.getenv("VPN_GERMANY_PRICE_TOKEN")
@@ -89,6 +89,9 @@ previous_markup = None
 previous_states = {}
 support_requests = []
 
+
+
+
 """************************************************* БАЗОВЫЕ КОМАНДЫ (/start, /help, /balance) *****************************************************"""
 global start_message_for_reply
 start_message_for_reply = """Добро пожаловать в <b>BlazerVPN</b> – ваш надежный партнер в обеспечении безопасной и анонимной связи в сети.
@@ -134,25 +137,23 @@ async def start_cmd(message: Message):
     else:
         await edit_profile(user_name, user_id)
         await message.answer_photo(photo="https://imgur.com/oaUI02P", caption=start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
+    await register_commands(message=message)
 
 # обработчик кнопки balance (balance)
 async def balance_def(callback: CallbackQuery):
     user_id = callback.from_user.id
     balance = await get_balance(user_id=user_id)
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/VfCjBuE", caption=f"• 💵 <b>Баланс</b>:\n\nВаш баланс: <code>{balance}</code> ₽\n\n<i>Чтобы пополнить свой баланс, вы можете использовать кнопку ниже, либо использовать команду - /replenishment</i>", parse_mode="HTML"), reply_markup=balance_handle_keyboard)
-    await callback.answer("")
 
 
 # обработчик кнопки help(help_callback)
 async def help_kb_handle(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/wz2wvor", caption="• 🧑‍💻 <b>Связь с разработчиком</b>:\n\nДля связи с разработчиком бота перейдите по <b><a href = 'https://t.me/KING_08001'>ссылке</a></b>", parse_mode="HTML"), reply_markup=help_kb)
-    await callback.answer("")
 
 """*********************************************** ВЫБОР ЛОКАЦИИ И ПОКУПКА ВПН ************************************************************************"""
 # обработка кнопки выбора локации (buy)
 async def buying_VPN_handle(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/7Qhm4tw", caption="• 📍 <b>Локация:</b>\n\nДоступные локации:", parse_mode="HTML"), reply_markup=location_keyboard)
-    await callback.answer("")
 
 # обработка кнопок локаций (Sweden_callback, Finland_callback, Germany_callback)
 async def location_choose_def(callback: CallbackQuery, state: FSMContext):
@@ -192,20 +193,26 @@ async def buying_VPN_def(callback, country,  state):
     user_id = callback.from_user.id
     balance = await get_balance(user_id=user_id)
     price = await taking_vpn_price(country=country)
+
     if int(balance) >= int(price):
-        user_id = callback.from_user.id
         await buy_operation(user_id=user_id, user_name=user_name, price=price)
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/cXpphjT", caption="• 🛒 <b>Покупка VPN</b>:\n\nТовар успешно был приобретён ✅\n\nОжидайте выдачу ключа модераторами, обычно это занимает не более <code>30</code>-ти минут.\nПосле получения ключа, пожалуйста, ознакомьтесь с инструкцией по подключению к нашим сервисам VPN\n\nКлюч активации VPN будет отправлен в этом чате.", parse_mode="HTML"), reply_markup=insturtion_keyboard)
-        order_id = await save_order_id(user_id=user_id, user_name=user_name, location=country)
+
+        expiration_date = datetime.datetime.now() + datetime.timedelta(days=28) # срок действия VPN 28 дней
+        vpn_id = await update_vpn_half_info(user_id=user_id, user_name=user_name, location=country, expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S")) # сохранение данных пользователей и половину информации о впн в бд
+        create_new_key(key_id=vpn_id, name=f"ID: {user_id}", data_limit_gb=100.0) # создание нового ключа для VPN
+        vpn_key = find_keys_info(key_id=vpn_id) # получение ключа
+        await update_vpn_other_info(vpn_key=vpn_key, vpn_id=vpn_id) # сохранение ключа в бд
+        await addind_vpn_count(user_id=user_id)
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/cXpphjT", caption=f"• 🛒 <b>Покупка VPN</b>:\n\nТовар успешно был приобретён ✅\n\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\nОзнакомьтесь с нашей инструкцией по использованию VPN ниже по кнопке.", parse_mode="HTML"), reply_markup=insturtion_keyboard)
         await edit_operations_history(user_id=user_id, user_name=user_name, operations=(-(float(price))), description_of_operation="🛒 Покупка VPN")
-        if user_name != None:
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=HELPER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-        else:
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
-            await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=HELPER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        # if user_name != None:
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=HELPER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        # else:
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>:\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
+        #     await bot.send_photo(photo="https://imgur.com/CLwDaV5", chat_id=HELPER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\n• 🛒 <b>Заявка на активацию VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id}</code>)\nЗаказал VPN на локации: {country}\nПредоставьте ключ активации.", reply_markup=reply_buy_keyboard(pay_id=order_id, country=country, user_id=user_id), parse_mode="HTML")
     else:
         await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/2RUdfMp", caption="• 🛒 <b>Покупка VPN</b>:\n\nУ вас недостаточно средств ❌\n\n<i>Чтобы пополнить баланс, используйте кнопку ниже</i>", parse_mode="HTML"), reply_markup=replenishment_balance)
     await callback.answer("")
@@ -255,11 +262,11 @@ async def profile_handle(callback: CallbackQuery):
         if referrer_id == None:
             referrer_id = "-"
         else:
-            referrer_name = find_user_data(user_id=referrer_id)[2]
+            referrer_name = await find_user_data(user_id=referrer_id)
             referrer_id = f"@{referrer_name} (ID: <code>{referrer_id}</code>)"
         used_promocodes = info[6]
         if used_promocodes == None:
-            used_promocodes = "-"
+            used_promocodes = "<code>none</code>"
         else:
             used_promocodes = [f"<code>{promo}</code>" for promo in used_promocodes.split(",")]
             used_promocodes = ", ".join(used_promocodes)
@@ -269,10 +276,8 @@ async def profile_handle(callback: CallbackQuery):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/tjRqQST", caption=f"• 👤 <b>Ваш профиль</b>:\n\n"
                                                             f"ID: <code>{id}</code>\n"
                                                             f"ID пользователя: <code>{user_db_id}</code>\n"
-                                                            f"USERNAME пользователя: <code>{user_db_name}</code>\n"
                                                             f"Баланс: <code>{balance}</code> ₽\n"
                                                             f"Дата регистрации: <code>{time_of_registration}</code>\n"
-                                                            f"Рефферер: <code>{referrer_id}</code>\n"
                                                             f"Использованные промокоды: {used_promocodes}\n"
                                                             f"Количество VPN за все время: <code>{vpns_count}</code>\n\n"
                                                             f"", parse_mode="HTML"), reply_markup=profile_keyboard)
@@ -309,7 +314,7 @@ async def extend_vpn_handle(callback: CallbackQuery, state: FSMContext):
             kb_for_count = addind_count_for_extend(count=numbers)
             price = await taking_vpn_price(country=location)
             if numbers == 1:
-                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Fv2UUEl", caption=f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}\nНажмите на кнопку, если готовы продлить VPN </b>🛡", parse_mode="HTML"), reply_markup=extend_keyboard)
+                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Fv2UUEl", caption=f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}<b>Нажмите на кнопку, если готовы продлить VPN </b>🛡", parse_mode="HTML"), reply_markup=extend_keyboard)
             else:
                 if callback.message.photo:
                     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Fv2UUEl", caption=f"• 🛡 <b>Продление VPN:</b>\n\n{vpn_info_text}\n<b>Выберите VPN </b>🛡<b>, который хотите продлить:</b>", parse_mode="HTML"), reply_markup=kb_for_count)
@@ -337,11 +342,9 @@ async def extend_vpn_handle(callback: CallbackQuery, state: FSMContext):
             if user_name != None:
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=ANUSH_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=BLAZER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=HELPER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
             else:
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=BLAZER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=ANUSH_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=HELPER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN</b>:\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
         
         else:
             await callback.answer("У вас недостаточно средств ❌")
@@ -387,11 +390,9 @@ async def extend_vpn_handle(callback: CallbackQuery, state: FSMContext):
             if user_name != None:
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=ANUSH_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=BLAZER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=HELPER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь @{user_name} \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
             else:
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=ANUSH_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=BLAZER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
-                await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=HELPER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
         else:
             await callback.answer("У вас недостаточно средств ❌")
             await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/2RUdfMp", caption="• 💵 <b>Баланс</b>:\n\nУ вас недостаточно средств ❌\nЧтобы пополнить свой баланс 💵 нажмите на кнопку ниже, либо используйте команду - /replenishment", parse_mode="HTML"), reply_markup=replenishment_balance)
@@ -422,7 +423,7 @@ async def handle_amount(message: Message, state):
     try:
         global amount
         amount = int(message.text)
-        if amount > 50:
+        if amount > 2:
             await message.answer_photo(photo="https://imgur.com/GedgOxd", caption="• 💵 <b>Пополнение баланса</b>:\n\nВыберите платежную систему:", parse_mode="HTML", reply_markup=await payment_type_keyboard(price=amount))
             await state.finish()
         else:
@@ -595,36 +596,74 @@ async def handle_user_promo(message: Message, state):
         else:
             await state.update_data(attempts=attempts.get("attempts", 0) + 1)
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• 🎟 <b>Система промокодов</b>:\n\nВы ввели неправильный промокод, либо он неактуален ❌\n\nСледите за новостями в нашем сообществе в вк\n\nПопробуйте ввести промокод еще раз:", reply_markup=promocode_keyboard, parse_mode="HTML")
-
+ 
 """******************************** ОБРАБОТКА ИНФОРМАЦИИ О СОБСТВЕННОМ VPN ПОЛЬЗОВАТЕЛЕЙ *******************************"""
 
 # обработка информации о личных VPN пользователей
 async def my_vpn_handle(callback: CallbackQuery):
     user_id = callback.from_user.id
     vpn_data = await get_vpn_data(user_id=user_id)
-    if vpn_data != None:
+
+    if vpn_data != []:
         vpn_info_text = "• 🛡 <b>Ваши VPN</b>:\n\n"
         numbers = 0
+        is_send = False
         for vpn in vpn_data:
             numbers += 1
             location = vpn[3]
             expiration_date = vpn[4]
             vpn_key = vpn[5]
-            if expiration_date is not None:
-                expiration_date_new = datetime.datetime.strptime(str(expiration_date), "%d.%m.%Y %H:%M:%S")
-                days_remaining = (expiration_date_new - datetime.datetime.now()).days
-                vpn_info_text += f"{numbers}. ID: <code>{vpn[0]}</code>\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\n"
-            else:
-                vpn_info_text += f"{numbers}. У вас имеется приобретенный VPN 🛡, который еще не обработан модераторами.\nОжидайте ответа модерации.\n\n"
-                numbers -= 1
+            expiration_date_new = datetime.datetime.strptime(str(expiration_date), "%d.%m.%Y %H:%M:%S")
+            days_remaining = (expiration_date_new - datetime.datetime.now()).days
+            vpn_info_text += f"{numbers}. ID: <code>{vpn[0]}</code>\n📍 Локация: <code>{location}</code>\n"
+            vpn_info_text += f"🕘 Дата окончания:   <code>{expiration_date}</code>\n"
+            vpn_info_text += f"⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\n"
 
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
+            if numbers > 4:
+                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=checking_message_limit(0))
+                is_send = True
+                break
+
+        if is_send == False:
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
     else:
         await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже, либо используйте команду</i> - /buy", parse_mode="HTML"), reply_markup=buy_keyboard)
     await callback.answer("")
 
-"""***************************************** СИСТЕМА ИСТОРИИ ОПЕРАЦИЙ *****************************************"""
+async def handle_continue_myvpn(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    vpn_data = await get_vpn_data(user_id=user_id)
 
+    part_number = int(callback.data.split('_')[2])
+    if part_number == 1:
+        number = 5
+    elif part_number == 2:
+        number = 9
+    elif part_number == 3:
+        number = 13
+    vpn_info_text = "• 🛡 <b>Ваши VPN</b>:\n\n"
+    numbers = 4
+    if vpn_data != None or vpn_data != []:
+        for vpn in enumerate(vpn_data[number - 1:], start=number):
+            numbers += 1
+            location = vpn[1][3]
+            expiration_date = vpn[1][4]
+            vpn_key = vpn[1][5]
+            expiration_date_new = datetime.datetime.strptime(str(expiration_date), "%d.%m.%Y %H:%M:%S")
+            days_remaining = (expiration_date_new - datetime.datetime.now()).days
+            vpn_info_text += f"{numbers}. ID: <code>{vpn[1][0]}</code>\n📍 Локация: <code> {location}</code>\n"
+            vpn_info_text += f"🕘 Дата окончания:   <code>{expiration_date}</code>\n"
+            vpn_info_text += f"⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\n"
+
+            if number >= 8:
+                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=checking_message_limit(1))
+                break
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
+    else:
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже, либо используйте команду</i> - /buy", parse_mode="HTML"), reply_markup=buy_keyboard)
+    await callback.answer("")
+            
+"""***************************************** СИСТЕМА ИСТОРИИ ОПЕРАЦИЙ *****************************************"""
 # обработка информации о истории операций пользователя
 async def history_of_opeartions_handle(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -698,6 +737,49 @@ async def back_handle(callback: CallbackQuery, state):
         )
     await callback.answer("")
 
+async def register_commands(message: Message) -> None:
+    if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
+        await bot.set_my_commands(commands=[
+            BotCommand("start", "🔁 Обновить бота"),
+            BotCommand("help", "📋 Узнать список команд"),
+            BotCommand("balance", "💵 Узнать свой баланс"),
+            BotCommand("connect_with_dev", "🧑‍💻 Связаться с разработчиком бота"),
+            BotCommand("buy", "🛒 Купить VPN"),
+            BotCommand("extend_vpn", "⌛️ Продлить VPN"),
+            BotCommand("replenishment", "💵 Пополнить баланс"),
+            BotCommand("support", "🆘 Задать вопрос"),
+            BotCommand("my_vpn", "🛡 Мои VPN"),
+            BotCommand("ref_system", "🤝 Реферальная система"),
+            BotCommand("history_of_operations", "📋 История операций"),
+            BotCommand("instruction", "📄 Инструкция по использованию VPN"),
+            BotCommand("profile", "👤 Профиль"),
+            BotCommand("user_info", "🗃 Данные о пользователях"),
+            BotCommand("user_vpn", "🛡️ VPN пользователей"),
+            BotCommand("add", "💵 Пополнение баланса"),
+            BotCommand("delete", "💵 Удаление баланса"),
+            BotCommand("ban", "❌ Заблокировать пользователя"),
+            BotCommand("unban", "✅ Разблокировать пользователя"),
+            BotCommand("add_vpn", "🛡️ Добавить VPN"),
+            BotCommand("delete_vpn", "🛡️ Удалить VPN"),
+            BotCommand("user_history", "📋 История операций пользователя")
+            ])
+    else:
+        await bot.set_my_commands(commands=[
+            BotCommand("start", "🔁 Обновить бота"),
+            BotCommand("help", "📋 Узнать список команд"),
+            BotCommand("balance", "💵 Узнать свой баланс"),
+            BotCommand("connect_with_dev", "🧑‍💻 Связаться с разработчиком бота"),
+            BotCommand("buy", "🛒 Купить VPN"),
+            BotCommand("extend_vpn", "⌛️ Продлить VPN"),
+            BotCommand("replenishment", "💵 Пополнить баланс"),
+            BotCommand("support", "🆘 Задать вопрос"),
+            BotCommand("my_vpn", "🛡 Мои VPN"),
+            BotCommand("ref_system", "🤝 Реферальная система"),
+            BotCommand("history_of_operations", "📋 История операций"),
+            BotCommand("instruction", "📄 Инструкция по использованию VPN"),
+            BotCommand("profile", "👤 Профиль")
+            ])
+
 
 """**************************************************** СИСТЕМА РЕГИСТРИРОВАНИЯ ВСЕХ ХЕНДЛЕРОВ *****************************************************"""
 
@@ -724,5 +806,6 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(promo_handle, lambda c: c.data == "promo_callback", state="*")
     dp.register_message_handler(handle_user_promo, state=PromocodeStates.WAITING_FOR_USER_PROMOCODE)
     dp.register_callback_query_handler(my_vpn_handle, lambda c: c.data == "myvpn_callback", state="*")
+    dp.register_callback_query_handler(handle_continue_myvpn, lambda c: "vpn_info_" in c.data, state="*")
     dp.register_callback_query_handler(history_of_opeartions_handle, lambda c: c.data == "history_of_operations_callback", state="*")
     dp.register_callback_query_handler(back_handle, lambda c: c.data == "back", state="*")
