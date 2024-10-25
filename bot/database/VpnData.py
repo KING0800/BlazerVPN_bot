@@ -68,11 +68,12 @@ async def check_expired_vpns():
                 vpn_id = vpn[0]
                 user_id = vpn[1]
                 user_name = vpn[2]
+                location = vpn[3]
                 expiration_date_str = vpn[4]
                 expiration_date = datetime.strptime(expiration_date_str, "%d.%m.%Y %H:%M:%S")
                 if current_time > expiration_date:
                     cur.execute("DELETE FROM VpnData WHERE user_id = ? AND expiration_date = ?", (user_id, expiration_date_str))
-                    delete_key(vpn_id)
+                    delete_key(vpn_id, location=location)
                     db.commit()
                     info_list = [user_id, user_name, expiration_date]
                     list.append(info_list)
@@ -174,9 +175,13 @@ async def delete_vpn(vpn_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()
         cur.execute("SELECT * FROM VpnData WHERE id = ?", (vpn_id,))
-        if cur.fetchone() is None:
+        vpn_data = cur.fetchall()
+        if vpn_data: 
+            for vpn in vpn_data:
+                location = vpn[3]
+            cur.execute("DELETE FROM VpnData WHERE id = ?", (vpn_id,))
+            db.commit()
+            delete_key(key_id=vpn_id, location=location)
+            return True
+        else:
             return None
-        cur.execute("DELETE FROM VpnData WHERE id = ?", (vpn_id,))
-        db.commit()
-        delete_key(key_id=vpn_id)
-        return True

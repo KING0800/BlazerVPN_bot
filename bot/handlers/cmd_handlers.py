@@ -276,14 +276,14 @@ async def handle_text(message: Message, state):
     ##### ADM COMMANDS
     elif message.text == "/add":
         if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
-            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_add_keyboard)
+            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите <code>ID</code> или <code>USERNAME</code> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_add_keyboard)
             await AdmCommandState.WAITING_ID_OF_USER_FOR_ADD.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
             
     elif message.text == "/delete":
         if message.from_user.id == int(ANUSH_CHAT_TOKEN) or message.from_user.id == int(BLAZER_CHAT_TOKEN):
-            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите <b>ID</b> или <b>USERNAME</b> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_delete_keyboard)
+            await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите <code>ID</code> или <code>USERNAME</code> пользователя:", parse_mode="HTML", reply_markup=about_yourself_to_delete_keyboard)
             await AdmCommandState.WAITING_ID_OF_USER_HANDLE_FOR_DELETE.set()
         else:
             await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nВы не имеете доступа к этой команде! ❌\n\n<i>Чтобы узнать доступные вам команды, используйте</i> - /help", parse_mode="HTML", reply_markup=back_keyboard)
@@ -330,7 +330,6 @@ async def handle_text(message: Message, state):
 
     else:
         await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• ❌ <b>Ошибка:</b>\n\nНеверная команда. Пожалуйста, используйте одну из доступных команд (/help)", reply_markup=start_kb_handle(user_id), parse_mode="HTML")
-
 
 def register_command_handlers(dp: Dispatcher) -> None:
     dp.register_message_handler(handle_text, content_types=['text'])

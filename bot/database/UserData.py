@@ -119,15 +119,15 @@ async def pay_operation(price, user_id=None, user_name=None):
 async def add_operation(price, user_id=None, user_name=None):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        if user_name == None:
-            cur.execute(
-                "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
-                (price, user_id,)
-            )
-        elif user_id == None:
+        if user_name != None:
             cur.execute(
                 "UPDATE UserINFO SET balance = balance + ? WHERE user_name = ?",
                 (price, user_name,)
+            )
+        elif user_id != None:
+            cur.execute(
+                "UPDATE UserINFO SET balance = balance + ? WHERE user_id = ?",
+                (price, user_id,)
             )
         db.commit()
 
@@ -136,7 +136,7 @@ async def add_operation(price, user_id=None, user_name=None):
 async def get_referrer_info(user_id):
     with sq.connect('database.db') as db:
         cur = db.cursor()
-        cur.execute("SELECT user_id, user_name FROM UserINFO WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT user_id, user_name FROM UserINFO WHERE referrer_id = ?", (user_id,))
         refferers_info = cur.fetchall()
         if refferers_info:
             return refferers_info
@@ -177,15 +177,15 @@ async def save_promocode(user_id, promocode):
 async def delete_sum_operation(price, user_id=None, user_name=None):
     db = sq.connect('database.db')
     cur = db.cursor()
-    if user_name == None:
-        cur.execute(
-            "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
-            (price, user_id,)
-        )
-    elif user_id == None:
+    if user_name != None:
         cur.execute(
             "UPDATE UserINFO SET balance = balance - ? WHERE user_name = ?",
             (price, user_name,)
+        )
+    elif user_id != None:
+        cur.execute(
+            "UPDATE UserINFO SET balance = balance - ? WHERE user_id = ?",
+            (price, user_id,)
         )
     db.commit()
         

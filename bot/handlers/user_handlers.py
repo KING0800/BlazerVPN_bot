@@ -12,16 +12,15 @@ from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InlineKeyboar
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 from bot.database.OperationsData import edit_operations_history, getting_operation_history
-from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
+from bot.database.TempData import get_temp_message, find_message_id
 from bot.database.UserData import edit_profile, addind_vpn_count, get_balance, buy_operation, add_operation, pay_operation, get_referrer_info, check_promocode_used, save_promocode, find_user_data
 from bot.database.VpnData import extend_vpn_state, get_vpn_data, update_vpn_other_info, update_vpn_half_info
-from bot.database.SupportData import edit_data, getting_question
 
-from bot.keyboards.user_keyboards import checking_message_limit, check_balance_keyboard,create_payment_keyboard, payment_type_keyboard, final_extend_some_vpn, profile_keyboard, support_to_moders, start_kb_handle, vpn_connection_type_keyboard, pay_netherlands_keyboard, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, support_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, promocode_keyboard, device_keyboard
-from bot.keyboards.adm_keyboards import reply_keyboard, reply_buy_keyboard
+from bot.keyboards.user_keyboards import verify_user, checking_message_limit, check_balance_keyboard,create_payment_keyboard, payment_type_keyboard, final_extend_some_vpn, profile_keyboard, support_to_moders, start_kb_handle, vpn_connection_type_keyboard, pay_netherlands_keyboard, help_kb, balance_handle_keyboard, find_balance_keyboard, ref_system_keyboard, location_keyboard, pay_sweden_keyboard, pay_finland_keyboard, pay_germany_keyboard, replenishment_balance, back_keyboard, insturtion_keyboard, buy_keyboard, extend_keyboard, numbers_for_replenishment, addind_count_for_extend, promocode_keyboard, device_keyboard
 
-from bot.utils.yoomoney_payment import yoomoney_check, create_yoomoney_payment
-from bot.utils.nicepay_payment import nicepay_check, create_nicepay_payment
+from bot.utils.payments.yoomoney_payment import yoomoney_check, create_yoomoney_payment
+from bot.utils.payments.yookassa_payment import create_yookassa_payment, yookassa_check
+from bot.utils.payments.nicepay_payment import nicepay_check, create_nicepay_payment
 from bot.utils.outline import create_new_key, find_keys_info 
 
 # импорт токенов из файла .env
@@ -113,37 +112,31 @@ async def start_cmd(message: Message):
     result = await find_user_data(user_id=user_id)
     if result == None or result == []: 
         start_command = message.text
-        print(start_command)
         referrer_id = str(start_command[7:])
         if referrer_id != "":
             if referrer_id != str(user_id):
-                await edit_profile(user_name, user_id, referrer_id)
-                await message.answer_photo(photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nСпасибо за регистрацию! Бонусы успешно зачислились рефереру на баланс.\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML", reply_markup=ref_system_keyboard)
-                try:
-                    await bot.send_photo(chat_id=referrer_id, photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nПо вашей реферальной ссылке зарегистровался новый пользователь.\nВам начислены: <code>20</code>₽ ", reply_markup=find_balance_keyboard, parse_mode="HTML")
-                    await add_operation(int(20), referrer_id)
-                    result = await find_user_data(user_id=referrer_id)
-                    for items in result:
-                        user_name = items[2]
-                    await edit_operations_history(user_id=referrer_id, user_name=user_name, operations=(+int(20)), description_of_operation="🤝 Реферальная система")
-                except:
-                    pass
+                await message.answer_photo(photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nПодтвердите что вы не робот.", parse_mode="HTML", reply_markup=verify_user(ref_id=referrer_id))
             else:
                 await message.answer_photo(photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nВы не можете зарегистрироваться по собственной реферальной ссылке ❌\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML", reply_markup=ref_system_keyboard)
                 await edit_profile(user_name, user_id)
         else:
-            await edit_profile(user_name, user_id)
             await message.answer_photo(photo="https://imgur.com/oaUI02P", caption=start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
+            await edit_profile(user_name, user_id)
     else:
+        start_command = message.text
+        referrer_id = str(start_command[7:])
+        if referrer_id != "":
+            await message.answer_photo(photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nВы не можете зарегистрироваться по собственной реферальной ссылке ❌\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML", reply_markup=ref_system_keyboard)
+        else:
+            await message.answer_photo(photo="https://imgur.com/oaUI02P", caption=start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
         await edit_profile(user_name, user_id)
-        await message.answer_photo(photo="https://imgur.com/oaUI02P", caption=start_message_for_reply, reply_markup=start_kb_handle(user_id), parse_mode="HTML")
     await register_commands(message=message)
 
 # обработчик кнопки balance (balance)
 async def balance_def(callback: CallbackQuery):
     user_id = callback.from_user.id
     balance = await get_balance(user_id=user_id)
-    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/VfCjBuE", caption=f"• 💵 <b>Баланс</b>:\n\nВаш баланс: <code>{balance}</code> ₽\n\n<i>Чтобы пополнить свой баланс, вы можете использовать кнопку ниже, либо использовать команду - /replenishment</i>", parse_mode="HTML"), reply_markup=balance_handle_keyboard)
+    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/VfCjBuE", caption=f"• 💵 <b>Баланс</b>:\n\nВаш баланс: <code>{balance}</code> ₽\n\n<i>Чтобы пополнить свой баланс, вы можете использовать кнопку ниже</i>", parse_mode="HTML"), reply_markup=balance_handle_keyboard)
 
 
 # обработчик кнопки help(help_callback)
@@ -158,16 +151,16 @@ async def buying_VPN_handle(callback: CallbackQuery, state: FSMContext):
 # обработка кнопок локаций (Sweden_callback, Finland_callback, Germany_callback)
 async def location_choose_def(callback: CallbackQuery, state: FSMContext):
     if callback.data == "Sweden_callback":
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: Швеция 🇸🇪\nВыберите протокол подключения вашего VPN:", parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Швеция 🇸🇪"))
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: <code>Швеция 🇸🇪</code>\nВыберите протокол подключения вашего VPN:", parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Швеция 🇸🇪"))
     
     elif callback.data == "Netherlands_callback":
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: Нидерланды 🇳🇱\nВыберите протокол подключения вашего VPN:", parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Нидерланды 🇳🇱"))
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: <code>Нидерланды 🇳🇱</code>\nВыберите протокол подключения вашего VPN:", parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Нидерланды 🇳🇱"))
 
     elif callback.data == "Finland_callback":
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: Финляндия 🇫🇮\nВыберите протокол подключения вашего VPN:",  parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Финляндия 🇫🇮"))
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: <code>Финляндия 🇫🇮</code>\nВыберите протокол подключения вашего VPN:",  parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Финляндия 🇫🇮"))
 
     elif callback.data == "Germany_callback":
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: Германия 🇩🇪\nВыберите протокол подключения вашего VPN:",  parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Германия 🇩🇪"))
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/Lf6OlGm", caption=f"• 🛡 <b>Выбор протокола подключения:</b>\n\nВы выбрали локацию: <code>Германия 🇩🇪</code>\nВыберите протокол подключения вашего VPN:",  parse_mode="HTML"), reply_markup=await vpn_connection_type_keyboard(location="Германия 🇩🇪"))
     await callback.answer("")
 
 async def choosing_vpn_connection_def(callback: CallbackQuery, state: FSMContext):
@@ -184,7 +177,7 @@ async def choosing_vpn_connection_def(callback: CallbackQuery, state: FSMContext
     elif location == "Германия 🇩🇪":
         price = await taking_vpn_price(country="Германия 🇩🇪")
         kb = pay_germany_keyboard
-    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/cXpphjT", caption=f"• 🛡 <b>Покупка VPN:</b>\n\nВы выбрали VPN на локации: {location}\nПротокол подключения: <code>Shadowsocks</code> 🧦\n\nСтоимость покупки данного VPN: <code>{price}</code> ₽", parse_mode="HTML"), reply_markup=kb)
+    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/cXpphjT", caption=f"• 🛡 <b>Покупка VPN:</b>\n\nВы выбрали VPN на локации: <code>{location}</code>\nПротокол подключения: <code>Shadowsocks</code> 🧦\n\nСтоимость покупки данного VPN: <code>{price}</code> ₽", parse_mode="HTML"), reply_markup=kb)
     await callback.answer('')
 
 # функция, которая обрабатывает покупку VPN.
@@ -199,8 +192,8 @@ async def buying_VPN_def(callback, country,  state):
 
         expiration_date = datetime.datetime.now() + datetime.timedelta(days=28) # срок действия VPN 28 дней
         vpn_id = await update_vpn_half_info(user_id=user_id, user_name=user_name, location=country, expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S")) # сохранение данных пользователей и половину информации о впн в бд
-        create_new_key(key_id=vpn_id, name=f"ID: {user_id}", data_limit_gb=100.0) # создание нового ключа для VPN
-        vpn_key = find_keys_info(key_id=vpn_id) # получение ключа
+        create_new_key(key_id=vpn_id, name=f"ID: {user_id}", data_limit_gb=200.0, location=country) # создание нового ключа для VPN
+        vpn_key = find_keys_info(key_id=vpn_id, location=country) # получение ключа
         await update_vpn_other_info(vpn_key=vpn_key, vpn_id=vpn_id) # сохранение ключа в бд
         await addind_vpn_count(user_id=user_id)
         await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/cXpphjT", caption=f"• 🛒 <b>Покупка VPN</b>:\n\nТовар успешно был приобретён ✅\n\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\nОзнакомьтесь с нашей инструкцией по использованию VPN ниже по кнопке.", parse_mode="HTML"), reply_markup=insturtion_keyboard)
@@ -276,6 +269,7 @@ async def profile_handle(callback: CallbackQuery):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/tjRqQST", caption=f"• 👤 <b>Ваш профиль</b>:\n\n"
                                                             f"ID: <code>{id}</code>\n"
                                                             f"ID пользователя: <code>{user_db_id}</code>\n"
+                                                            f"Username: <code>{user_db_name}</code>\n"
                                                             f"Баланс: <code>{balance}</code> ₽\n"
                                                             f"Дата регистрации: <code>{time_of_registration}</code>\n"
                                                             f"Использованные промокоды: {used_promocodes}\n"
@@ -288,8 +282,12 @@ async def profile_handle(callback: CallbackQuery):
 
 # обработка кнопки (instruction_keyboard)
 async def instruction_handle(callback: CallbackQuery):
-    await callback.message.answer_photo(photo="https://imgur.com/99Kpo93", caption="• 📖 <b>Инструкция:</b>\n\nВыберите платформу, по которой хотите получить инструкцию по использованию VPN 🛡:", parse_mode="HTML", reply_markup=device_keyboard)
+    if callback.data.split(".")[1] == "answer":
+        await callback.message.answer_photo(photo="https://imgur.com/99Kpo93", caption="• 📖 <b>Инструкция:</b>\n\nВыберите платформу, по которой хотите получить инструкцию по использованию VPN 🛡:", parse_mode="HTML", reply_markup=device_keyboard)
+    elif callback.data.split(".")[1] == "edit":
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/99Kpo93", caption="• 📖 <b>Инструкция:</b>\n\nВыберите платформу, по которой хотите получить инструкцию по использованию VPN 🛡:", parse_mode="HTML"), reply_markup=device_keyboard)
     await callback.answer('')
+
 
 """*********************************************************** СИСТЕМА ПО ПРОДЛЕНИЮ VPN ******************************************************************"""
 
@@ -299,7 +297,7 @@ async def extend_vpn_handle(callback: CallbackQuery, state: FSMContext):
     if callback.data == "extend_vpn_info":
         user_id = callback.from_user.id
         vpn_data = await get_vpn_data(user_id=user_id)      
-        if vpn_data is not None:      
+        if vpn_data != []:      
             numbers = 0
             vpn_info_text = ""
             for id, user_db_id, user_db_name, location, expiration_date, vpn_key, days_remaining in vpn_data:
@@ -395,7 +393,7 @@ async def extend_vpn_handle(callback: CallbackQuery, state: FSMContext):
                 await bot.send_photo(photo="https://imgur.com/Fv2UUEl", chat_id=BLAZER_CHAT_TOKEN, caption=f"• 🛡 <b>Продление VPN:</b>\n\nПользователь без <b>USERNAME</b> \n(ID: <code>{user_id})</code>\nПродлил VPN 🛡 на <code>28</code> дней:\n\n{vpn_info_text}", parse_mode="HTML")
         else:
             await callback.answer("У вас недостаточно средств ❌")
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/2RUdfMp", caption="• 💵 <b>Баланс</b>:\n\nУ вас недостаточно средств ❌\nЧтобы пополнить свой баланс 💵 нажмите на кнопку ниже, либо используйте команду - /replenishment", parse_mode="HTML"), reply_markup=replenishment_balance)
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/2RUdfMp", caption="• 💵 <b>Баланс</b>:\n\nУ вас недостаточно средств ❌\nЧтобы пополнить свой баланс 💵 нажмите на кнопку ниже", parse_mode="HTML"), reply_markup=replenishment_balance)
     await callback.answer("")
 
 """**************************************************** СИСТЕМА ПОПОЛНЕНИЯ БАЛАНСА **********************************************************"""
@@ -451,6 +449,13 @@ async def handle_payment_type(callback: CallbackQuery, state):
         await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/GedgOxd", caption="• 💵 <b>Пополнение баланса</b>:\n\nСчет на оплату сформирован. ✅", parse_mode="HTML"), reply_markup=payment_button)
         await state.finish() 
 
+    elif "yookassa_callback" in callback.data:
+        amount = int(callback.data.split("_")[2])
+        payment_url, payment_id = create_yookassa_payment(float(amount), chat_id=callback.from_user.id)
+        payment_button = await create_payment_keyboard(payment_url=payment_url, payment_id=payment_id, payment_type="yookassa")
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/GedgOxd", caption="• 💵 <b>Пополнение баланса</b>:\n\nСчет на оплату сформирован. ✅", parse_mode="HTML"), reply_markup=payment_button)
+        await state.finish() 
+
     elif "nicepay_callback" in callback.data:
         amount = int(callback.data.split("_")[2])
         await state.update_data(amount=amount)
@@ -494,24 +499,32 @@ async def handle_user_email(message: Message, state):
           
 # обработка кнопки, для проверки успешного пополнения(checking_payment_)
 async def succesfull_payment(callback: CallbackQuery):
+    user_name = callback.from_user.username
+    user_id = callback.from_user.id
+
     if "yoomoney" in callback.data:
-        payment_id = yoomoney_check(callback.data.split('_')[-1])
-        user_name = callback.from_user.username
-        user_id = callback.from_user.id
+        payment_id = yoomoney_check(callback.data.split('_')[3])
         if payment_id == True:
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/jMVwz7i", caption=f'• 💵 <b>Пополнение баланса</b>:\n\nОплата на сумму <code>{amount}</code> <b>₽</b> прошла успешно ✅ \n\nЧтобы узнать свой баланс - /balance', parse_mode="HTML"), reply_markup=check_balance_keyboard)
-            await add_operation(amount, user_id)
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/jMVwz7i", caption=f'• 💵 <b>Пополнение баланса</b>:\n\nОплата на сумму <code>{amount}</code> <b>₽</b> прошла успешно ✅ \n\nЧтобы узнать свой баланс, воспользуйтесь кнопкой ниже', parse_mode="HTML"), reply_markup=check_balance_keyboard)
+            await add_operation(price=amount, user_id=user_id)
             await edit_operations_history(user_id=user_id, user_name=user_name, operations=(+(int(amount))), description_of_operation="💵 Пополнение баланса")
         elif payment_id == False:
             await callback.answer('Оплата еще не прошла.')
     
-    elif "nicepay" in callback.data:
-        payment_id = nicepay_check(callback.data.split('_')[-1])
-        user_name = callback.from_user.username
-        user_id = callback.from_user.id
+    elif "yookassa" in callback.data:
+        payment_id = yookassa_check(callback.data.split('_')[3])
         if payment_id == True:
-            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/jMVwz7i", caption=f'• 💵 <b>Пополнение баланса</b>:\n\nОплата на сумму <code>{amount}</code> <b>₽</b> прошла успешно ✅ \n\nЧтобы узнать свой баланс - /balance', parse_mode="HTML"), reply_markup=check_balance_keyboard)
-            await add_operation(amount, user_id)
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/jMVwz7i", caption=f'• 💵 <b>Пополнение баланса</b>:\n\nОплата на сумму <code>{amount}</code> <b>₽</b> прошла успешно ✅ \n\nЧтобы узнать свой баланс, воспользуйтесь кнопкой ниже', parse_mode="HTML"), reply_markup=check_balance_keyboard)
+            await add_operation(price=amount, user_id=user_id)
+            await edit_operations_history(user_id=user_id, user_name=user_name, operations=(+(int(amount))), description_of_operation="💵 Пополнение баланса")
+        elif payment_id == False:
+            await callback.answer('Оплата еще не прошла.')
+
+    elif "nicepay" in callback.data:
+        payment_id = nicepay_check(callback.data.split('_')[3])
+        if payment_id == True:
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/jMVwz7i", caption=f'• 💵 <b>Пополнение баланса</b>:\n\nОплата на сумму <code>{amount}</code> <b>₽</b> прошла успешно ✅ \n\nЧтобы узнать свой баланс, воспользуйтесь кнопкой ниже', parse_mode="HTML"), reply_markup=check_balance_keyboard)
+            await add_operation(price=amount, user_id=user_id)
             await edit_operations_history(user_id=user_id, user_name=user_name, operations=(+(int(amount))), description_of_operation="💵 Пополнение баланса")
         elif payment_id == False:
             await callback.answer('Оплата еще не прошла.')
@@ -565,6 +578,29 @@ async def ref_system(callback: CallbackQuery):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/UcKZLFn", caption=text, parse_mode="HTML"), reply_markup=back_keyboard)
     await callback.answer("")
 
+async def verify_ref_user(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user_name = callback.from_user.username
+    ref_id = callback.data.split(".")[1]
+    user_info = await find_user_data(user_id)
+    if user_info:
+        for user in user_info:
+            is_referrer = user[3]
+        if is_referrer != None:
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nВы не можете зарегистрироваться по собственной реферальной ссылке ❌\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML"), reply_markup=ref_system_keyboard)
+
+    await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nСпасиоб за регистрацию! Бонусы успешно зачислились рефереру на баланс.\n\n<i>Подробнее о реферальной системе - /ref_system </i>", parse_mode="HTML"), reply_markup=ref_system_keyboard)
+    try:
+        await bot.send_photo(chat_id=ref_id, photo="https://imgur.com/f9IQEVG", caption="• 🤝 <b>Реферальная система</b>:\n\nПо вашей реферальной ссылке зарегистровался новый пользователь.\nВам начислены: <code>20</code>₽ ", reply_markup=find_balance_keyboard, parse_mode="HTML")
+        await add_operation(int(20), ref_id)
+        result = await find_user_data(user_id=ref_id)
+        for items in result:
+            user_name = items[2]
+        await edit_operations_history(user_id=ref_id, user_name=user_name, operations=(+int(20)), description_of_operation="🤝 Реферальная система")
+    except:
+        pass
+
+
 # обработка ожидания промокода от пользователя
 async def promo_handle(callback: CallbackQuery, state):
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/CwQn7Qv", caption="• 🎟 <b>Система промокодов</b>:\n\nВведите действующий промокод:", parse_mode="HTML"), reply_markup=back_keyboard)
@@ -579,7 +615,7 @@ async def handle_user_promo(message: Message, state):
     check_used_promo = await check_promocode_used(user_id, user_promo)
     if user_promo in PROMOCODE_TOKEN and check_used_promo == False:
         await message.answer_photo(photo="https://imgur.com/nkB75M2", caption="• 🎟 <b>Система промокодов</b>:\n\nВы ввели правильный промокод ✅\n\nНа ваш баланс зачислено: <code>20</code> рублей 💵!", reply_markup=back_keyboard, parse_mode="HTML")
-        await add_operation(20, user_id)
+        await add_operation(price=20, user_id=user_id)
         await edit_operations_history(user_id=user_id, user_name=user_name, operations=(+(int(20))), description_of_operation="🎟 Промокод")
         await save_promocode(user_id, user_promo)
         await state.finish()
@@ -595,7 +631,7 @@ async def handle_user_promo(message: Message, state):
             await state.finish()
         else:
             await state.update_data(attempts=attempts.get("attempts", 0) + 1)
-            await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• 🎟 <b>Система промокодов</b>:\n\nВы ввели неправильный промокод, либо он неактуален ❌\n\nСледите за новостями в нашем сообществе в вк\n\nПопробуйте ввести промокод еще раз:", reply_markup=promocode_keyboard, parse_mode="HTML")
+            await message.answer_photo(photo="https://imgur.com/weO3juR", caption="• 🎟 <b>Система промокодов</b>:\n\nВы ввели неправильный промокод, либо он неактуален ❌\n\nСледите за новостями в нашем канале\n\nПопробуйте ввести промокод еще раз:", reply_markup=promocode_keyboard, parse_mode="HTML")
  
 """******************************** ОБРАБОТКА ИНФОРМАЦИИ О СОБСТВЕННОМ VPN ПОЛЬЗОВАТЕЛЕЙ *******************************"""
 
@@ -619,7 +655,7 @@ async def my_vpn_handle(callback: CallbackQuery):
             vpn_info_text += f"🕘 Дата окончания:   <code>{expiration_date}</code>\n"
             vpn_info_text += f"⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\n"
 
-            if numbers > 4:
+            if numbers == 4:
                 await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=checking_message_limit(0))
                 is_send = True
                 break
@@ -627,7 +663,7 @@ async def my_vpn_handle(callback: CallbackQuery):
         if is_send == False:
             await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
     else:
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже, либо используйте команду</i> - /buy", parse_mode="HTML"), reply_markup=buy_keyboard)
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже</i>", parse_mode="HTML"), reply_markup=buy_keyboard)
     await callback.answer("")
 
 async def handle_continue_myvpn(callback: CallbackQuery):
@@ -637,30 +673,39 @@ async def handle_continue_myvpn(callback: CallbackQuery):
     part_number = int(callback.data.split('_')[2])
     if part_number == 1:
         number = 5
+        start_number = 4
     elif part_number == 2:
         number = 9
+        start_number = 8
     elif part_number == 3:
         number = 13
+        start_number = 12
+    elif part_number == 4:
+        number = 17
+        start_number = 16
+    is_send = False
+
     vpn_info_text = "• 🛡 <b>Ваши VPN</b>:\n\n"
-    numbers = 4
     if vpn_data != None or vpn_data != []:
-        for vpn in enumerate(vpn_data[number - 1:], start=number):
-            numbers += 1
+        for vpn in enumerate(vpn_data[number - 1:], start=start_number):
+            start_number += 1
             location = vpn[1][3]
             expiration_date = vpn[1][4]
             vpn_key = vpn[1][5]
             expiration_date_new = datetime.datetime.strptime(str(expiration_date), "%d.%m.%Y %H:%M:%S")
             days_remaining = (expiration_date_new - datetime.datetime.now()).days
-            vpn_info_text += f"{numbers}. ID: <code>{vpn[1][0]}</code>\n📍 Локация: <code> {location}</code>\n"
+            vpn_info_text += f"{start_number}. ID: <code>{vpn[1][0]}</code>\n📍 Локация: <code> {location}</code>\n"
             vpn_info_text += f"🕘 Дата окончания:   <code>{expiration_date}</code>\n"
             vpn_info_text += f"⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\n"
 
-            if number >= 8:
-                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=checking_message_limit(1))
+            if start_number == int(number) + int(3):
+                await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=checking_message_limit(part_number))
+                is_send = True
                 break
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
+        if is_send == False:
+            await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/4NwMie5", caption=vpn_info_text, parse_mode="HTML"), reply_markup=buy_keyboard)
     else:
-        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже, либо используйте команду</i> - /buy", parse_mode="HTML"), reply_markup=buy_keyboard)
+        await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/weO3juR", caption=f"• 🛡 <b>Ваши VPN</b>:\n\nВы не имеете действующего VPN ❌\n\n<i>Чтобы купить VPN, воспользуйтесь кнопкой ниже</i>", parse_mode="HTML"), reply_markup=buy_keyboard)
     await callback.answer("")
             
 """***************************************** СИСТЕМА ИСТОРИИ ОПЕРАЦИЙ *****************************************"""
@@ -729,7 +774,7 @@ async def back_handle(callback: CallbackQuery, state):
                 caption=start_message_for_reply, 
                 reply_markup=start_kb_handle(user_id), 
                 parse_mode="HTML"
-            )
+            ) 
     else:
         await callback.message.edit_media(
             media=InputMediaPhoto(media="https://imgur.com/oaUI02P", caption=start_message_for_reply, parse_mode="HTML"), 
@@ -780,7 +825,6 @@ async def register_commands(message: Message) -> None:
             BotCommand("profile", "👤 Профиль")
             ])
 
-
 """**************************************************** СИСТЕМА РЕГИСТРИРОВАНИЯ ВСЕХ ХЕНДЛЕРОВ *****************************************************"""
 
 def register_user_handlers(dp: Dispatcher) -> None:
@@ -792,13 +836,13 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(location_choose_def, lambda c: c.data == "Sweden_callback" or c.data == "Finland_callback" or c.data == "Germany_callback" or c.data == "Netherlands_callback", state="*")
     dp.register_callback_query_handler(choosing_vpn_connection_def, lambda c: "vpn_connection_type_callback" in c.data, state="*")
     dp.register_callback_query_handler(choosing_location_for_buying_VPN, lambda c: c.data == "Buying_sweden_VPN" or c.data == "Buying_finland_VPN" or c.data == "Buying_germany_VPN" or c.data == "Buying_netherlands_VPN")
-    dp.register_callback_query_handler(instruction_handle, lambda c: c.data == "instruction_keyboard")
+    dp.register_callback_query_handler(instruction_handle, lambda c: "instruction_keyboard" in c.data, state="*")
     dp.register_callback_query_handler(extend_vpn_handle, lambda c: c.data == "extend_vpn_info" or c.data == "extend_sole_vpn" or "extend_some_vpn" in c.data or "final_extend_vpn" in c.data, state="*")
     dp.register_callback_query_handler(replenishment_handle, lambda c: c.data == "replenishment", state="*")
     dp.register_callback_query_handler(choosing_int_for_replenishment, lambda c: c.data == "100_for_replenishment_callback" or c.data == "200_for_replenishment_callback" or c.data == "500_for_replenishment_callback", state="*")
     dp.register_message_handler(handle_amount, state=PaymentStates.WAITING_FOR_AMOUNT)
-    dp.register_callback_query_handler(handle_payment_type, lambda c: "yoomoney_callback" in c.data or "nicepay_callback" in c.data, state="*")
-    dp.register_callback_query_handler(succesfull_payment, lambda c: "checking_nicepay_payment" in c.data or "checking_yoomoney_payment" in c.data, state="*")
+    dp.register_callback_query_handler(handle_payment_type, lambda c: "yoomoney_callback" in c.data or "nicepay_callback" in c.data or "yookassa_callback" in c.data, state="*")
+    dp.register_callback_query_handler(succesfull_payment, lambda c: "checking_nicepay_payment" in c.data or "checking_yoomoney_payment" in c.data or "checking_yookassa_payment" in c.data, state="*")
     dp.register_callback_query_handler(support_handle, lambda c: c.data == "support_callback", state="*")
     dp.register_message_handler(handle_user_email, state=UserEmailState.WAITING_FOR_USER_EMAIL)
     # dp.register_message_handler(process_question, state=SupportStates.WAITING_FOR_QUESTION)
@@ -809,3 +853,4 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(handle_continue_myvpn, lambda c: "vpn_info_" in c.data, state="*")
     dp.register_callback_query_handler(history_of_opeartions_handle, lambda c: c.data == "history_of_operations_callback", state="*")
     dp.register_callback_query_handler(back_handle, lambda c: c.data == "back", state="*")
+    dp.register_callback_query_handler(verify_ref_user, lambda c: "verify_user" in c.data, state="*")

@@ -4,7 +4,6 @@ import asyncio
 
 from dotenv import load_dotenv
 from typing import NamedTuple
-from datetime import timedelta
 
 from aiogram import Dispatcher, Bot
 from aiogram.dispatcher import FSMContext
@@ -12,10 +11,8 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import CallbackQuery, Message, InputMediaPhoto
 
 from bot.database.OperationsData import edit_operations_history, getting_operation_history
-from bot.database.TempData import save_temp_message, get_temp_message, delete_temp_message, find_message_id
 from bot.database.UserData import addind_vpn_count, get_balance, add_operation, pay_operation, get_referrer_info, find_user_data, ban_users_handle, unban_users_handle, delete_sum_operation
 from bot.database.VpnData import delete_vpn, update_vpn_half_info, update_vpn_other_info, get_expiration_date, get_order_id, get_vpn_data, check_vpn_expiration_for_days, check_expired_vpns
-from bot.database.SupportData import getting_question, deleting_answered_reports
 
 from bot.keyboards.user_keyboards import insturtion_keyboard, back_keyboard
 from bot.keyboards.adm_keyboards import pay_finland_keyboard, pay_germany_keyboard, pay_netherlands_keyboard, pay_sweden_keyboard, vpn_connection_type_keyboard, adm_panel_keyboard, location_kb, buy_info_keyboard, user_find_data, about_yourself_to_add_keyboard, about_yourself_to_delete_keyboard, finish_buy_vpn, extension_keyboard
@@ -221,16 +218,43 @@ async def adm_panel_buttons_handler(callback: CallbackQuery):
 """*********************************************** УДАЛЕНИЕ БАЛАНСА ***********************************************"""
 
 # обрабатывает кнопку about_yourself_keyboard, чтобы указать, что удаление баланса должно быть модератору, который нажал на кнопку
-async def deleting_balance_for_moder(callback: CallbackQuery, state):
-    global user_id_for_delete
-    global user_name_for_delete
+async def deleting_balance_for_moder(callback: CallbackQuery, state: FSMContext):
     user_id_for_delete = callback.from_user.id
     user_name_for_delete = callback.from_user.username
+    await state.update_data(user_id_for_delete=user_id_for_delete, user_name_for_delete=user_name_for_delete)
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Удаление баланса:</b>\n\nВведите сумму для удаления баланса:", parse_mode="HTML"), reply_markup=back_keyboard)
     await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_DELETE.set()
 
+# удаление баланса модераторами
+async def handling_user_name_for_delete(message: Message, state: FSMContext):
+    try:
+        user_id_for_delete = int(message.text)
+        user_name_for_delete = None
+    except ValueError:
+        user_name_for_delete = message.text
+        user_id_for_delete = None
+
+    user_info = await find_user_data(user_id=user_id_for_delete, user_name=user_name_for_delete)
+    if user_info:
+        await state.update_data(user_id_for_delete=user_id_for_delete, user_name_for_delete=user_name_for_delete)
+        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Удаление баланса:</b>\n\nВведите сумму для удаления баланса:", reply_markup=back_keyboard, parse_mode="HTML")
+        await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_DELETE.set()
+    else:
+        attempts = await state.get_data()
+        attempts_count = attempts.get("attempts", 0)
+        if attempts_count >= 3:
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /delete")
+            await state.finish()
+        else:
+            await state.update_data(attempts=attempts_count + 1)
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="• 💵 <b>Удаление баланса:</b>:\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести <b>ID</b> или <b>USERNAME</b> заново: ", parse_mode="HTML", reply_markup=back_keyboard)
+
 # обработка числа для удаления баланса модераторами
-async def handle_for_adm_delete_sum(message: Message, state):
+async def handle_for_adm_delete_sum(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id_for_delete = data.get("user_id_for_delete")
+    user_name_for_delete = data.get("user_name_for_delete")
+
     try:
         adm_sum_for_delete = int(message.text)
         if adm_sum_for_delete <= 0:
@@ -273,17 +297,42 @@ async def handle_for_adm_delete_sum(message: Message, state):
 """************************************************* ПОПОЛНЕНИЕ БАЛАНСА **************************************************"""
 
 # обрабатывает кнопку about_yourself_keyboard, чтобы указать, что Пополнение баланса должно быть модератору, который нажал на кнопку
-async def adding_balance_for_moder(callback: CallbackQuery, state):
-    global user_id_for_add
-    global user_name_for_add
+async def adding_balance_for_moder(callback: CallbackQuery, state: FSMContext):
     user_id_for_add = callback.from_user.id
     user_name_for_add = callback.from_user.username
+    await state.update_data(user_id_for_add=user_id_for_add, user_name_for_add=user_name_for_add)
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/i4sEHgp", caption="• 💵 <b>Пополнение баланса:</b>\n\nВведите сумму для пополнения баланса:", parse_mode="HTML"), reply_markup=back_keyboard)
     await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
 
-async def handle_for_adm_add_sum(message: Message, state):
+# Пополнение баланса администратором
+async def handling_user_name(message: Message, state: FSMContext):
     try:
-        global adm_sum_for_add
+        user_id_for_add = int(message.text)
+        user_name_for_add = None
+    except Exception as e:
+        user_name_for_add = message.text
+        user_id_for_add = None
+    
+    user_info = await find_user_data(user_id=user_id_for_add, user_name=user_name_for_add)
+    if user_info:
+        await state.update_data(user_id_for_add=user_id_for_add, user_name_for_add=user_name_for_add)
+        await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nВведите сумму для пополнения баланса:", reply_markup=back_keyboard, parse_mode="HTML")
+        await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
+    else:
+        attempts = await state.get_data()
+        attempts_count = attempts.get("attempts", 0)
+        if attempts_count >= 3:
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /add")
+            await state.finish()
+        else:
+            await state.update_data(attempts=attempts_count + 1)
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="• 💵 <b>Пополнение баланса:</b>:\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести <b>ID</b> или <b>USERNAME</b> заново: ", parse_mode="HTML", reply_markup=back_keyboard)
+
+async def handle_for_adm_add_sum(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id_for_add = data.get("user_id_for_add")
+    user_name_for_add = data.get("user_name_for_add")  
+    try:
         adm_sum_for_add = int(message.text)
         if adm_sum_for_add <= 0:
             raise ValueError
@@ -305,7 +354,7 @@ async def handle_for_adm_add_sum(message: Message, state):
     user_info = await find_user_data(user_id=user_id_for_add, user_name=user_name_for_add)
     if user_info:
         user_id_for_reply = user_info[0][1]
-        await add_operation(adm_sum_for_add, user_id=user_id_for_add)
+        await add_operation(price=adm_sum_for_add, user_id=user_id_for_add, user_name=user_name_for_add)
         await bot.send_photo(photo="https://imgur.com/i4sEHgp", chat_id=user_id_for_reply, caption=f"• 💵 <b>Пополнение баланса</b>:\n\nМодератор пополнил ваш баланс на сумму: {adm_sum_for_add} ₽ ✅", parse_mode="HTML")
 
     await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nБаланс указанного пользователя пополнен на: {adm_sum_for_add} ₽ ✅", reply_markup=back_keyboard, parse_mode="HTML")
@@ -442,7 +491,6 @@ async def ban_user_handle(message: Message, state):
 
 # обработка поиска информации о VPN пользователей
 async def find_info_about_users_vpn(message: Message, state):
-    user_id = message.from_user.id
     try:
         user_id = int(message.text)
         user_name = None
@@ -450,7 +498,7 @@ async def find_info_about_users_vpn(message: Message, state):
         user_name = message.text
         user_id = None
     vpn_data = await get_vpn_data(user_id=user_id, user_name=user_name)
-    user_info = await find_user_data(user_name=user_name)
+    user_info = await find_user_data(user_name=user_name, user_id=user_id)
     if user_info:
         if vpn_data:
             for vpn in vpn_data:
@@ -471,6 +519,7 @@ async def find_info_about_users_vpn(message: Message, state):
                     await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡 <b>VPN пользователя:</b>\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
         else:
             await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡 <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
+        await state.finish()
     else:
         attempts = await state.get_data()
         attempts_count = attempts.get("attempts", 0)
@@ -527,6 +576,8 @@ async def find_user_info_for_adm_panel(message: Message, state: FSMContext):
             await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="• 🗃 <b>Данные о пользователе</b>:\n\nПользователь с таким <b>ID</b> не найден ❌", parse_mode="HTML", reply_markup=back_keyboard)
 
 
+"""********************************************************* ПОИСК ИНФОРМАЦИИ О VPN ПОЛЬЗОВАТЕЛЕЙ ****************************************************"""
+
 # обработка информации о VPN пользователей через меню управления пользователем
 async def vpn_info_handle(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -544,13 +595,13 @@ async def vpn_info_handle(callback: CallbackQuery, state: FSMContext):
                     days_remaining = (expiration_date_new - datetime.datetime.now()).days
                     await bot.send_photo(photo="https://imgur.com/i4sEHgp",
                                         chat_id=callback.from_user.id, 
-                                        caption=f"• 🛡 <b>VPN пользователя:</b>\n\nID: <code>{id}</code>\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <code>{vpn_key}</code>\n", 
+                                        caption=f"• 🛡 <b>VPN пользователя:</b>\n\nID: <code>{id}</code>\n📍 Локация:  <code> {location}</code>\n🕘 Дата окончания:   <code>{expiration_date}</code>\n⏳ Осталось:   <code>{days_remaining}</code> дней\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n", 
                                         parse_mode="HTML")
                 else:
                     await callback.message.answer_photo(photo="https://imgur.com/i4sEHgp", caption="• 🛡 <b>VPN пользователя:</b>\n\nУ пользователя имеется приобретенный VPN, который не обработан модераторами.", parse_mode="HTML")
                 await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
         else:
-            await callback.message.answer_photo(photo="", caption="• 🛡 <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
+            await callback.message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="• 🛡 <b>VPN пользователя:</b>\n\nПользователь пока не имеет ни одного VPN ❌", parse_mode="HTML", reply_markup=back_keyboard)
             await AdmButtonState.WAITING_FOR_CALLBACK_BUTTONS.set()
     else:
         attempts = await state.get_data()
@@ -561,33 +612,9 @@ async def vpn_info_handle(callback: CallbackQuery, state: FSMContext):
         else:
             await state.update_data(attempts=attempts_count + 1)
             await callback.message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="• 🛡 <b>VPN пользователя:</b>:\n\nПользователь с таким <b>USERNAME</b> не найден ❌\n\nПопробуйте ввести <b>ID</b> или <b>USERNAME</b> заново: ", parse_mode="HTML", reply_markup=back_keyboard)
+    await callback.answer("")
 
-# Пополнение баланса администратором
-async def handling_user_name(message: Message, state):
-    global user_id_for_add
-    global user_name_for_add
-    try:
-        user_id_for_add = int(message.text)
-        user_name_for_add = None
-    except Exception as e:
-        user_name_for_add = message.text
-        user_id_for_add = None
-    await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Пополнение баланса</b>:\n\nВведите сумму для пополнения баланса:", reply_markup=back_keyboard, parse_mode="HTML")
-    await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_ADD.set()
-
-# удаление баланса модераторами
-async def handling_user_name_for_delete(message: Message, state):
-    try:
-        global user_id_for_delete
-        global user_name_for_delete
-        user_id_for_delete = int(message.text)
-        user_name_for_delete = None
-    except ValueError:
-        user_name_for_delete = message.text
-        user_id_for_delete = None
-    await message.answer_photo(photo="https://imgur.com/i4sEHgp", caption=f"• 💵 <b>Удаление баланса:</b>\n\nВведите сумму для удаления баланса:", reply_markup=back_keyboard, parse_mode="HTML")
-    await AdmCommandState.WAITING_FOR_SUM_HANDLE_FOR_DELETE.set()
-
+"""************************************************ СООБЩЕНИЕ О СРОКАХ ОКОНЧАНИЯ VPN ****************************************************"""
 
 async def notification_moders_for_vpns_soon(days: int):
     while True:
@@ -604,7 +631,7 @@ async def notification_moders_for_vpns_soon(days: int):
                     await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> осталось меньше <code>{days}</code> дней до окончания.", parse_mode="HTML")
                     await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> осталось меньше <code>{days}</code> дней до окончания.", parse_mode="HTML")
                     
-                    await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nДо окончания срока действия вашего VPN осталось <code>{days}</code> дней. \nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы продлить свой VPN, используйте кнопку ниже, либо используйте команду -</i> /extend_vpn", parse_mode="HTML", reply_markup=extension_keyboard)
+                    await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nДо окончания срока действия вашего VPN осталось <code>{days}</code> дней. \nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы продлить свой VPN, используйте кнопку ниже", parse_mode="HTML", reply_markup=extension_keyboard)
                     
                     await mark_notification_sent(user_id, user_name, expiration_date)
         await asyncio.sleep(1800)
@@ -628,9 +655,10 @@ async def notification_moders_for_vpns_end():
                 await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=BLAZER_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> был удален c связи с окончанием срока действия. ✅", parse_mode="HTML")
                 await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=ANUSH_CHAT_TOKEN, caption=f"❗️ <b>Важно!</b>\n\nVPN для пользователя @{user_name} (ID: <code>{user_id}</code>) с датой окончания <code>{expiration_date}</code> был удален c связи с окончанием срока действия. ✅", parse_mode="HTML")
                 
-                await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nВаш VPN был успешно удален ✅\nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы купить VPN, используйте кнопку ниже, либо используйте команду -</i> /buy", parse_mode="HTML", reply_markup=buy_info_keyboard)
+                await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=user_id, caption=f"• 🛡 <b>Ваш VPN</b>:\n\nВаш VPN был успешно удален ✅\nСрок окончания действия VPN: <code>{expiration_date}</code>\n\n<i>Чтобы купить VPN, используйте кнопку ниже", parse_mode="HTML", reply_markup=buy_info_keyboard)
         await asyncio.sleep(60)
 
+"""************************************************ ДОБАВЛЕНИЕ VPN ****************************************************"""
 
 async def add_user_vpn(message: Message, state):
     try:
@@ -649,7 +677,7 @@ async def add_user_vpn(message: Message, state):
         attempts = await state.get_data()
         attempts_count = attempts.get("attempts", 0)
         if attempts_count >= 3:
-            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /")
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /add_vpn")
             await state.finish()
         else:
             await state.update_data(attempts=attempts_count + 1)
@@ -716,14 +744,17 @@ async def buying_VPN_def(callback, country, user_id):
 
     expiration_date = datetime.datetime.now() + datetime.timedelta(days=28) # срок действия VPN 28 дней
     vpn_id = await update_vpn_half_info(user_id=user_id, user_name=user_name, location=country, expiration_days=expiration_date.strftime("%d.%m.%Y %H:%M:%S")) # сохранение данных пользователей и половину информации о впн в бд
-    create_new_key(key_id=vpn_id, name=f"ID: {user_id}", data_limit_gb=100.0) # создание нового ключа для VPN
-    vpn_key = find_keys_info(key_id=vpn_id) # получение ключа
+    create_new_key(key_id=vpn_id, name=f"ID: {user_id}", data_limit_gb=200.0, location=country) # создание нового ключа для VPN
+    vpn_key = find_keys_info(key_id=vpn_id, location=country) # получение ключа
     await update_vpn_other_info(vpn_key=vpn_key, vpn_id=vpn_id) # сохранение ключа в бд
     await addind_vpn_count(user_id=user_id)
     await bot.send_photo(photo="https://imgur.com/hW9OgnB", chat_id=user_id, caption=f"• 🛒 <b>Покупка VPN</b>:\n\nМодератор предоставил вам VPN на <code>28</code> дней. ✅\n\n🔑 Ключ активации: <pre>{vpn_key}</pre>\n\nОзнакомьтесь с нашей инструкцией по использованию VPN ниже по кнопке.", parse_mode="HTML", reply_markup=insturtion_keyboard)
     await callback.message.edit_media(media=InputMediaPhoto(media="https://imgur.com/hW9OgnB", caption=f"• 🛒 <b>Покупка VPN</b>:\n\nVPN был успешно предоставлен пользователю @{user_name} (ID: <code>{user_id}</code>) ✅", parse_mode="HTML"), reply_markup=back_keyboard)
     await edit_operations_history(user_id=user_id, user_name=user_name, operations=(float(0)), description_of_operation="🛒 Покупка VPN")
     await callback.answer("")
+
+
+"""*********************************************************************** УДАЛЕНИЕ VPN ***********************************************************************"""
 
 async def deleting_user_vpn(message: Message, state):
     try:
@@ -754,7 +785,7 @@ async def handle_vpn_id(message: Message, state):
         attempts = await state.get_data()
         attempts_count = attempts.get("attempts", 0)
         if attempts_count >= 3:
-            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /")
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /delete_vpn")
             await state.finish()
         else:
             await state.update_data(attempts=attempts_count + 1)
@@ -763,7 +794,7 @@ async def handle_vpn_id(message: Message, state):
         attempts = await state.get_data()
         attempts_count = attempts.get("attempts", 0)
         if attempts_count >= 3:
-            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /")
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /delete_vpn")
             await state.finish()
         else:
             await state.update_data(attempts=attempts_count + 1)
@@ -771,6 +802,8 @@ async def handle_vpn_id(message: Message, state):
     else:
         await message.answer_photo(photo="https://imgur.com/hW9OgnB", caption="• 🛡️ <b>Удаление VPN:</b>\n\nVPN пользователя успешно удален ✅", parse_mode="HTML", reply_markup=back_keyboard)
         await state.finish()
+
+"""*********************************************************************** ИСТОРИЯ ОПЕРАЦИЙ ПОЛЬЗОВАТЕЛЯ ***********************************************************************"""
 
 async def handle_user_id_for_history(message: Message, state):
     try:
@@ -806,7 +839,7 @@ async def handle_user_id_for_history(message: Message, state):
         attempts = await state.get_data()
         attempts_count = attempts.get("attempts", 0)
         if attempts_count >= 3:
-            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - ")
+            await message.answer_photo(photo="https://imgur.com/zhPS0ja", caption="Слишком много попыток ❌\n\nПопробуйте заново - /user_history")
             await state.finish()
         else:
             await state.update_data(attempts=attempts_count + 1)

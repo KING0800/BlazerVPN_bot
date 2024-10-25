@@ -16,10 +16,10 @@ def start_kb_handle(user_id) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="⌛️ Продлить VPN", callback_data="extend_vpn_info")
     )
     start_keyboard.add(
-        InlineKeyboardButton(text="🛡️ Мои VPN", callback_data="myvpn_callback")
+        InlineKeyboardButton(text="🛡️ Список моих VPN", callback_data="myvpn_callback")
     )
     start_keyboard.add(
-                InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance")
+                InlineKeyboardButton(text="💵 Узнать свой баланс", callback_data="balance")
     )
     start_keyboard.add(
         InlineKeyboardButton(text="🧑‍💻 Разработчик", callback_data="help_callback"),
@@ -46,9 +46,9 @@ support_keyboard.add(
 location_keyboard = InlineKeyboardMarkup()
 location_keyboard.add(
         # InlineKeyboardButton(text="🇫🇮 Финляндия", callback_data="Finland_callback"),   
-        # InlineKeyboardButton(text="🇩🇪 Германия", callback_data="Germany_callback"),
+        InlineKeyboardButton(text="🇩🇪 Германия", callback_data="Germany_callback"),
         InlineKeyboardButton(text="🇸🇪 Швеция", callback_data="Sweden_callback"),
-        # InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="Netherlands_callback"),
+        InlineKeyboardButton(text="🇳🇱 Нидерланды", callback_data="Netherlands_callback")
 )        
 location_keyboard.add(
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
@@ -98,7 +98,7 @@ back_keyboard.add(
 # клавиатура по обработке инструкций
 insturtion_keyboard = InlineKeyboardMarkup()
 insturtion_keyboard.add(
-    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard"),
+    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard.answer"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -107,6 +107,9 @@ buy_keyboard = InlineKeyboardMarkup()
 buy_keyboard.add(
     InlineKeyboardButton(text="🛒 Купить VPN", callback_data="buy"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+)
+buy_keyboard.add(
+    InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction_keyboard.edit")
 )
 
 # клавиатура по продлению VPN
@@ -151,6 +154,7 @@ async def payment_type_keyboard(price: int) -> InlineKeyboardMarkup:
     payment_type = InlineKeyboardMarkup()
     payment_type.add(
         InlineKeyboardButton(text="💳 YooMoney", callback_data=f"yoomoney_callback_{price}"),
+        InlineKeyboardButton(text="💳 YooKassa", callback_data=f"yookassa_callback_{price}")
         # InlineKeyboardButton(text="💳 NicePay", callback_data=f"nicepay_callback_{price}"),
     )
     payment_type.add(
@@ -158,7 +162,7 @@ async def payment_type_keyboard(price: int) -> InlineKeyboardMarkup:
     )
     return payment_type
 
-async def create_payment_keyboard(payment_id: int, payment_url: str, payment_type: str) -> InlineKeyboardMarkup:
+async def create_payment_keyboard(payment_id: str, payment_url: str, payment_type: str) -> InlineKeyboardMarkup:
     payment_button = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -167,6 +171,7 @@ async def create_payment_keyboard(payment_id: int, payment_url: str, payment_typ
             ]
         ]
     )
+    print(payment_id)
     payment_button.add(
         InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
     )
@@ -175,7 +180,7 @@ async def create_payment_keyboard(payment_id: int, payment_url: str, payment_typ
 # клавиатура для системы промокодов
 promocode_keyboard = InlineKeyboardMarkup()
 promocode_keyboard.add(
-    InlineKeyboardButton(text="Сообщество VK", url="https://vk.com/blazervpn"),
+    InlineKeyboardButton(text="Канал", url="https://t.me/blazervpn"),
     InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
 )
 
@@ -251,6 +256,9 @@ check_balance_keyboard = InlineKeyboardMarkup()
 check_balance_keyboard.add(
     InlineKeyboardButton(text="💵 Узнать баланс", callback_data="balance")
 )
+check_balance_keyboard.add(
+    InlineKeyboardButton(text="❓ Проблема с оплатой?", url="https://t.me/blazer_helper")
+)
 
 def checking_message_limit(current_message_part: int) -> InlineKeyboardMarkup:
     check_message_limit_kb = InlineKeyboardMarkup()
@@ -262,3 +270,11 @@ def checking_message_limit(current_message_part: int) -> InlineKeyboardMarkup:
 ) 
     
     return check_message_limit_kb
+
+def verify_user(ref_id: int) -> InlineKeyboardMarkup:
+    verify_user_kb = InlineKeyboardMarkup()
+    verify_user_kb.add(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"verify_user.{ref_id}"),
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back")
+    )
+    return verify_user_kb

@@ -49,7 +49,6 @@ async def main(dp: Dispatcher) -> None:
 
     asyncio.create_task(notification_moders_for_vpns_soon(days=1))
     asyncio.create_task(notification_moders_for_vpns_end())
-
     register_handler(dp=dp)
 
 
